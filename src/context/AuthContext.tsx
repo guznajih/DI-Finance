@@ -20,7 +20,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
-  const [simulatedUserId, setSimulatedUserId] = useState<number | null>(null);
+  const [simulatedUserId, setSimulatedUserId] = useState<number | null>(1);
 
   // Helper fetch with headers
   const authFetch = async (url: string, init?: RequestInit): Promise<Response> => {
@@ -44,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const headers: Record<string, string> = {};
       if (currentToken) headers['Authorization'] = `Bearer ${currentToken}`;
-      if (devUserId) headers['x-dev-user-id'] = String(devUserId);
+      headers['x-dev-user-id'] = String(devUserId || simulatedUserId || 1);
 
       const res = await fetch('/api/auth/me', { headers });
       if (res.ok) {

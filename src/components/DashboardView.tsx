@@ -7,6 +7,7 @@ import {
   Calendar,
   CreditCard,
   DollarSign,
+  Filter,
   Landmark,
   PlusCircle,
   RefreshCw,
@@ -16,7 +17,7 @@ import {
   Wallet,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.tsx';
-import { DashboardMetrics } from '../types/index.ts';
+import { DashboardMetrics, Fund, Unit } from '../types/index.ts';
 import { ViewType } from './Sidebar.tsx';
 
 interface DashboardViewProps {
@@ -30,20 +31,80 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const { authFetch } = useAuth();
   const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [funds, setFunds] = useState<Fund[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchMetrics = async () => {
+  // Filters (Bulan, Tahun, Unit, Sumber Dana)
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1;
+
+  const [selectedMonth, setSelectedMonth] = useState<string>(String(currentMonth));
+  const [selectedYear, setSelectedYear] = useState<string>(String(currentYear));
+  const [selectedUnit, setSelectedUnit] = useState<string>('');
+  const [selectedFund, setSelectedFund] = useState<string>('');
+
+  const months = [
+    { value: '', label: 'Semua Bulan (Kumulatif Tahunan)' },
+    { value: '1', label: 'Januari' },
+    { value: '2', label: 'Februari' },
+    { value: '3', label: 'Maret' },
+    { value: '4', label: 'April' },
+    { value: '5', label: 'Mei' },
+    { value: '6', label: 'Juni' },
+    { value: '7', label: 'Juli' },
+    { value: '8', label: 'Agustus' },
+    { value: '9', label: 'September' },
+    { value: '10', label: 'Oktober' },
+    { value: '11', label: 'November' },
+    { value: '12', label: 'Desember' },
+  ];
+
+  const years = ['2025', '2026', '2027'];
+
+  // Fetch Units & Funds for filter dropdowns
+  useEffect(() => {
+    const fetchDropdowns = async () => {
+      try {
+        const [uRes, fRes] = await Promise.all([
+          authFetch('/api/units'),
+          authFetch('/api/funds'),
+        ]);
+        if (uRes.ok) setUnits(await uRes.json());
+        if (fRes.ok) setFunds(await fRes.json());
+      } catch (e) {
+        console.error('Error fetching dropdown filters:', e);
+      }
+    };
+    fetchDropdowns();
+  }, []);
+
+  const fetchMetrics = async (retry = 0) => {
     setLoading(true);
-    setError(null);
+    if (retry === 0) setError(null);
     try {
-      const res = await authFetch('/api/dashboard');
-      if (!res.ok) throw new Error('Gagal mengambil data dashboard');
+      const params = new URLSearchParams();
+      if (selectedMonth) params.append('month', selectedMonth);
+      if (selectedYear) params.append('year', selectedYear);
+      if (selectedUnit) params.append('unitId', selectedUnit);
+      if (selectedFund) params.append('fundId', selectedFund);
+
+      const res = await authFetch(`/api/dashboard?${params.toString()}`);
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Gagal mengambil data dashboard');
+      }
       const data = await res.json();
       setMetrics(data);
+      setError(null);
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Terjadi kesalahan sistem');
+      if (retry < 2) {
+        setTimeout(() => fetchMetrics(retry + 1), 800);
+        return;
+      }
+      console.warn('Dashboard fetch warning:', err);
+      setError(err.message || 'Gagal mengambil data dashboard');
     } finally {
       setLoading(false);
     }
@@ -51,7 +112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   useEffect(() => {
     fetchMetrics();
-  }, []);
+  }, [selectedMonth, selectedYear, selectedUnit, selectedFund]);
 
   const formatRupiah = (val: number) => {
     return new Intl.NumberFormat('id-ID', {
@@ -69,39 +130,128 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div>
           <div className="inline-flex items-center space-x-2 rounded-full bg-emerald-700/60 px-3 py-1 text-xs font-semibold text-amber-300">
             <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse" />
-            <span>Tahun Buku Aktif 2026</span>
+            <span>Tahun Buku Aktif {selectedYear}</span>
           </div>
           <h1 className="mt-2 text-xl font-bold tracking-tight sm:text-2xl">
-            Sistem Akuntansi Pondok Pesantren
+            Sistem Keuangan Darul Istiqomah
           </h1>
-          <p className="mt-1 text-sm text-emerald-100">
-            Pondok Pesantren Darul Istiqomah Bojonegoro • Sistem Double-Entry
+          <p className="mt-1 text-xs sm:text-sm text-emerald-100">
+            Pondok Pesantren Darul Istiqomah Bojonegoro • Mesin Transaksi & Akuntansi FASE 2
           </p>
         </div>
 
         {/* Quick Actions */}
         <div className="flex flex-wrap gap-2.5">
           <button
-            onClick={openNewTransactionModal}
-            className="flex items-center space-x-2 rounded-xl bg-amber-400 px-4 py-2.5 text-xs font-bold text-emerald-950 shadow-md transition hover:bg-amber-300 active:scale-95"
+            onClick={() => setCurrentView('penerimaan')}
+            className="flex items-center space-x-1.5 rounded-xl bg-emerald-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-500 active:scale-95"
           >
-            <PlusCircle className="h-4 w-4" />
-            <span>Catat Transaksi</span>
+            <span>+ Penerimaan</span>
           </button>
           <button
-            onClick={() => setCurrentView('journals')}
-            className="flex items-center space-x-2 rounded-xl bg-emerald-700/80 px-4 py-2.5 text-xs font-semibold text-white shadow-sm transition hover:bg-emerald-600 active:scale-95"
+            onClick={() => setCurrentView('pengeluaran')}
+            className="flex items-center space-x-1.5 rounded-xl bg-rose-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-rose-500 active:scale-95"
           >
-            <BookOpen className="h-4 w-4 text-emerald-200" />
-            <span>Lihat Jurnal</span>
+            <span>- Pengeluaran</span>
           </button>
           <button
-            onClick={fetchMetrics}
-            className="flex items-center rounded-xl bg-emerald-800 p-2.5 text-emerald-200 transition hover:bg-emerald-700"
+            onClick={() => setCurrentView('transfer')}
+            className="flex items-center space-x-1.5 rounded-xl bg-teal-600 px-3.5 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-teal-500 active:scale-95"
+          >
+            <span>Transfer Bank</span>
+          </button>
+          <button
+            onClick={() => fetchMetrics(0)}
+            className="flex items-center rounded-xl bg-emerald-950/60 p-2.5 text-emerald-200 transition hover:bg-emerald-900"
             title="Muat Ulang Data"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
+        </div>
+      </div>
+
+      {/* FILTER BAR: Bulan, Tahun, Unit, Sumber Dana */}
+      <div className="grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-xs sm:grid-cols-2 lg:grid-cols-4 items-end">
+        <div>
+          <label className="block text-[11px] font-bold text-gray-500 mb-1">
+            <span className="flex items-center space-x-1">
+              <Calendar className="h-3.5 w-3.5 text-emerald-700" />
+              <span>BULAN</span>
+            </span>
+          </label>
+          <select
+            value={selectedMonth}
+            onChange={(e) => setSelectedMonth(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 p-2 text-xs font-semibold text-gray-800 focus:outline-none"
+          >
+            {months.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-gray-500 mb-1">
+            <span className="flex items-center space-x-1">
+              <Calendar className="h-3.5 w-3.5 text-emerald-700" />
+              <span>TAHUN</span>
+            </span>
+          </label>
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 p-2 text-xs font-semibold text-gray-800 focus:outline-none"
+          >
+            {years.map((y) => (
+              <option key={y} value={y}>
+                Tahun {y}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-gray-500 mb-1">
+            <span className="flex items-center space-x-1">
+              <Filter className="h-3.5 w-3.5 text-emerald-700" />
+              <span>UNIT / DIVISI</span>
+            </span>
+          </label>
+          <select
+            value={selectedUnit}
+            onChange={(e) => setSelectedUnit(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 p-2 text-xs font-semibold text-gray-800 focus:outline-none"
+          >
+            <option value="">-- Semua Unit / Divisi --</option>
+            {units.map((u) => (
+              <option key={u.id} value={u.id}>
+                {u.code} - {u.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-[11px] font-bold text-gray-500 mb-1">
+            <span className="flex items-center space-x-1">
+              <Filter className="h-3.5 w-3.5 text-emerald-700" />
+              <span>SUMBER DANA</span>
+            </span>
+          </label>
+          <select
+            value={selectedFund}
+            onChange={(e) => setSelectedFund(e.target.value)}
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 p-2 text-xs font-semibold text-gray-800 focus:outline-none"
+          >
+            <option value="">-- Semua Sumber Dana --</option>
+            {funds.map((f) => (
+              <option key={f.id} value={f.id}>
+                {f.code} - {f.name}
+              </option>
+            ))}
+          </select>
         </div>
       </div>
 
@@ -112,10 +262,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       )}
 
-      {/* Main KPI Metric Cards */}
+      {/* Main KPI Metric Cards (6 Cards) */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         {/* 1. Saldo Kas */}
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs transition hover:shadow-md">
+        <div
+          onClick={() => setCurrentView('cash-book')}
+          className="cursor-pointer rounded-2xl border border-gray-100 bg-white p-5 shadow-xs transition hover:shadow-md hover:border-emerald-200"
+        >
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-500">Saldo Kas Tunai</span>
             <div className="rounded-xl bg-emerald-50 p-2 text-emerald-700">
@@ -125,44 +278,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <p className="mt-3 text-lg font-bold text-gray-900">
             {metrics ? formatRupiah(metrics.saldoKas) : '...'}
           </p>
-          <div className="mt-1 flex items-center text-[11px] text-gray-400">
-            <span>Fisik brankas pondok</span>
+          <div className="mt-1 flex items-center text-[11px] text-emerald-700 font-medium">
+            <span>Buku Kas →</span>
           </div>
         </div>
 
         {/* 2. Saldo Bank */}
-        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs transition hover:shadow-md">
+        <div
+          onClick={() => setCurrentView('bank-book')}
+          className="cursor-pointer rounded-2xl border border-gray-100 bg-white p-5 shadow-xs transition hover:shadow-md hover:border-teal-200"
+        >
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-500">Saldo Bank (BSI & Lainnya)</span>
+            <span className="text-xs font-medium text-gray-500">Total Saldo Bank</span>
             <div className="rounded-xl bg-teal-50 p-2 text-teal-700">
               <Landmark className="h-5 w-5" />
             </div>
           </div>
-          <p className="mt-3 text-lg font-bold text-gray-900">
+          <p className="mt-3 text-lg font-bold text-teal-900">
             {metrics ? formatRupiah(metrics.saldoBank) : '...'}
           </p>
-          <div className="mt-1 flex items-center text-[11px] text-gray-400">
-            <span>Rekening giro & tabungan</span>
+          <div className="mt-1 flex items-center text-[11px] text-teal-700 font-medium">
+            <span>Buku Bank →</span>
           </div>
         </div>
 
-        {/* 3. Total Aset */}
+        {/* 3. Total Kas + Bank */}
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs transition hover:shadow-md">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-gray-500">Total Aset Pesantren</span>
+            <span className="text-xs font-medium text-gray-500">Total Kas + Bank</span>
             <div className="rounded-xl bg-blue-50 p-2 text-blue-700">
               <Scale className="h-5 w-5" />
             </div>
           </div>
           <p className="mt-3 text-lg font-bold text-gray-900">
-            {metrics ? formatRupiah(metrics.totalAset) : '...'}
+            {metrics ? formatRupiah(metrics.totalKasBank || metrics.saldoKas + metrics.saldoBank) : '...'}
           </p>
           <div className="mt-1 flex items-center text-[11px] text-gray-400">
-            <span>Kas, Bank & Aset Tetap</span>
+            <span>Likuiditas siap pakai</span>
           </div>
         </div>
 
-        {/* 4. Pendapatan */}
+        {/* 4. Total Pendapatan Bulan Berjalan */}
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs transition hover:shadow-md">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-500">Total Pendapatan</span>
@@ -179,7 +335,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* 5. Beban */}
+        {/* 5. Total Beban Bulan Berjalan */}
         <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-xs transition hover:shadow-md">
           <div className="flex items-center justify-between">
             <span className="text-xs font-medium text-gray-500">Total Beban</span>
@@ -192,7 +348,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </p>
           <div className="mt-1 flex items-center text-[11px] text-rose-600">
             <ArrowDownRight className="h-3 w-3 mr-0.5" />
-            <span>Dapur, Listrik, Operasional</span>
+            <span>Operasional, Listrik, Dapur</span>
           </div>
         </div>
 
@@ -223,29 +379,79 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </div>
 
-      {/* Grid: Recent Transactions & Important Information */}
+      {/* Saldo Masing-masing Bank (Individual Bank Breakdown) */}
+      <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs">
+        <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+          <div>
+            <h2 className="text-sm font-bold text-gray-900 flex items-center space-x-2">
+              <Landmark className="h-4 w-4 text-teal-800" />
+              <span>Rincian Saldo Masing-Masing Bank</span>
+            </h2>
+            <p className="text-xs text-gray-500">
+              Rekening giro dan tabungan terdaftar di Darul Istiqomah Finance
+            </p>
+          </div>
+          <button
+            onClick={() => setCurrentView('bank-book')}
+            className="text-xs font-bold text-teal-800 hover:underline"
+          >
+            Buka Buku Bank →
+          </button>
+        </div>
+
+        <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {metrics && metrics.bankBalances && metrics.bankBalances.length > 0 ? (
+            metrics.bankBalances.map((b) => (
+              <div
+                key={b.id}
+                onClick={() => setCurrentView('bank-book')}
+                className="cursor-pointer rounded-xl border border-gray-100 bg-gray-50/60 p-4 transition hover:bg-teal-50/50 hover:border-teal-200"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-gray-800">{b.bankName}</span>
+                  <span className="rounded bg-teal-100 px-2 py-0.5 font-mono text-[10px] font-bold text-teal-800">
+                    {b.accountNumber}
+                  </span>
+                </div>
+                <p className="mt-2 font-mono text-base font-bold text-teal-950">
+                  {formatRupiah(Number(b.balance))}
+                </p>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full py-4 text-center text-xs text-gray-400">
+              Belum ada data rekening bank.
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Grid: 10 Transaksi Terakhir & SPP Notification */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Left 2 Cols: Recent Transactions */}
+        {/* Left 2 Cols: 10 Transaksi Terakhir */}
         <div className="rounded-2xl border border-gray-200/80 bg-white p-6 shadow-xs lg:col-span-2">
           <div className="flex items-center justify-between border-b border-gray-100 pb-4">
             <div>
-              <h2 className="text-base font-bold text-gray-900">Transaksi Akuntansi Terbaru</h2>
+              <h2 className="text-base font-bold text-gray-900">10 Transaksi Terakhir</h2>
               <p className="text-xs text-gray-500">
-                Pencatatan real-time yang terhubung ke Jurnal Umum
+                Pencatatan mutasi transaksi riil dari database
               </p>
             </div>
             <button
               onClick={() => setCurrentView('transactions')}
               className="text-xs font-semibold text-emerald-800 hover:text-emerald-900 hover:underline"
             >
-              Lihat Semua →
+              Lihat Semua Transaksi →
             </button>
           </div>
 
           <div className="mt-4 divide-y divide-gray-100">
             {metrics && metrics.recentTransactions && metrics.recentTransactions.length > 0 ? (
               metrics.recentTransactions.map((trx) => (
-                <div key={trx.id} className="flex flex-col justify-between py-3.5 sm:flex-row sm:items-center">
+                <div
+                  key={trx.id}
+                  className="flex flex-col justify-between py-3.5 sm:flex-row sm:items-center"
+                >
                   <div className="space-y-1">
                     <div className="flex items-center space-x-2">
                       <span className="font-mono text-xs font-bold text-gray-700">
@@ -297,61 +503,51 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Right Col: System Master Status & SPP Note */}
+        {/* Right Col: SPP Note & Quick Navigation */}
         <div className="space-y-6">
-          {/* SPP Architecture Notice */}
-          <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-5 text-amber-950">
+          {/* SPP Rule Notice */}
+          <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 text-amber-950">
             <div className="flex items-center space-x-2">
               <CreditCard className="h-5 w-5 text-amber-700" />
-              <h3 className="font-bold text-sm">Modul SPP Eksternal</h3>
+              <h3 className="font-bold text-sm">Ketentuan Modul SPP Agregat</h3>
             </div>
             <p className="mt-2 text-xs text-amber-900 leading-relaxed">
-              Sesuai ketentuan, <strong>Darul Istiqomah Finance</strong> tidak memproses tagihan atau kartu SPP per santri. Penerimaan SPP nantinya dicatat secara <strong>rekapitulasi agregat</strong> melalui akun <code>4110 - Pendapatan SPP (Rekap Agregat)</code>.
+              Sesuai prinsip akuntansi pondok pesantren, aplikasi tidak mengelola tagihan individu atau data santri. Pembayaran SPP dicatat secara rekapitulasi agregat melalui akun <code>4110 - Pendapatan SPP (Rekap Agregat)</code>.
             </p>
           </div>
 
-          {/* Master Data Quick Status */}
+          {/* Quick Shortcuts */}
           <div className="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-xs">
-            <h3 className="text-sm font-bold text-gray-900">Ringkasan Master Data</h3>
-            <div className="mt-4 space-y-3">
-              <div
-                onClick={() => setCurrentView('units')}
-                className="flex cursor-pointer items-center justify-between rounded-xl bg-gray-50 p-3 transition hover:bg-emerald-50"
+            <h3 className="text-sm font-bold text-gray-900">Menu Cepat Keuangan</h3>
+            <div className="mt-4 space-y-2">
+              <button
+                onClick={() => setCurrentView('penerimaan')}
+                className="w-full flex items-center justify-between rounded-xl bg-gray-50 p-3 text-xs font-semibold text-gray-700 transition hover:bg-emerald-50 hover:text-emerald-900"
               >
-                <div className="text-xs">
-                  <p className="font-semibold text-gray-800">Unit / Divisi</p>
-                  <p className="text-gray-400">Madrasah, Dapur, Kesantrean, dsb.</p>
-                </div>
-                <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">
-                  {metrics?.counts?.units || 10} Unit
-                </span>
-              </div>
-
-              <div
-                onClick={() => setCurrentView('funds')}
-                className="flex cursor-pointer items-center justify-between rounded-xl bg-gray-50 p-3 transition hover:bg-emerald-50"
+                <span>Penerimaan Kas/Bank (KM-...)</span>
+                <span>→</span>
+              </button>
+              <button
+                onClick={() => setCurrentView('pengeluaran')}
+                className="w-full flex items-center justify-between rounded-xl bg-gray-50 p-3 text-xs font-semibold text-gray-700 transition hover:bg-rose-50 hover:text-rose-900"
               >
-                <div className="text-xs">
-                  <p className="font-semibold text-gray-800">Sumber Dana</p>
-                  <p className="text-gray-400">Operasional, Pembangunan, Wakaf, Infak</p>
-                </div>
-                <span className="rounded-full bg-teal-100 px-2.5 py-1 text-xs font-bold text-teal-800">
-                  {metrics?.counts?.funds || 12} Dana
-                </span>
-              </div>
-
-              <div
-                onClick={() => setCurrentView('accounts')}
-                className="flex cursor-pointer items-center justify-between rounded-xl bg-gray-50 p-3 transition hover:bg-emerald-50"
+                <span>Pengeluaran Kas/Bank (KK-...)</span>
+                <span>→</span>
+              </button>
+              <button
+                onClick={() => setCurrentView('transfer')}
+                className="w-full flex items-center justify-between rounded-xl bg-gray-50 p-3 text-xs font-semibold text-gray-700 transition hover:bg-teal-50 hover:text-teal-900"
               >
-                <div className="text-xs">
-                  <p className="font-semibold text-gray-800">Bagan Akun (COA)</p>
-                  <p className="text-gray-400">Aset, Kewajiban, Dana, Pendapatan, Beban</p>
-                </div>
-                <span className="rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-800">
-                  {metrics?.counts?.accounts || 45} Akun
-                </span>
-              </div>
+                <span>Transfer Antar Kas/Bank (TRF-...)</span>
+                <span>→</span>
+              </button>
+              <button
+                onClick={() => setCurrentView('testing')}
+                className="w-full flex items-center justify-between rounded-xl bg-emerald-50 p-3 text-xs font-bold text-emerald-900 transition hover:bg-emerald-100"
+              >
+                <span>Pengujian Akuntansi (4 Skenario)</span>
+                <span>🧪</span>
+              </button>
             </div>
           </div>
         </div>

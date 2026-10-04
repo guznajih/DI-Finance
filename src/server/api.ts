@@ -1,16 +1,22 @@
 import express, { Request, Response } from 'express';
 import {
+  approveTransaction,
   createAccount,
   createAuditLog,
   createBankAccount,
   createCashAccount,
   createFund,
-  createTransaction,
+  createJurnalUmum,
+  createPenerimaan,
+  createPengeluaran,
+  createTransfer,
   createUnit,
   getAccounts,
   getAuditLogs,
   getBankAccounts,
+  getBankBook,
   getCashAccounts,
+  getCashBook,
   getDashboardMetrics,
   getFunds,
   getGeneralLedger,
@@ -20,6 +26,8 @@ import {
   getUnits,
   postTransaction,
   reverseTransaction,
+  runPhase2AutomatedTests,
+  submitTransaction,
   updateAccount,
   updateFund,
   updateUnit,
@@ -28,7 +36,7 @@ import { getAllUsers, updateUserRoleAndUnit } from '../db/users.ts';
 import { AuthRequest, requireAuth } from '../middleware/auth.ts';
 
 export const apiRouter = express.Router();
-apiRouter.use(express.json());
+apiRouter.use(express.json({ limit: '10mb' }));
 
 // 1. Current user profile & session info
 apiRouter.get('/auth/me', requireAuth, async (req: AuthRequest, res: Response) => {
@@ -42,10 +50,17 @@ apiRouter.get('/auth/me', requireAuth, async (req: AuthRequest, res: Response) =
   }
 });
 
-// 2. Dashboard metrics
+// 2. Dashboard metrics with filters (month, year, unitId, fundId)
 apiRouter.get('/dashboard', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const data = await getDashboardMetrics();
+    const { month, year, unitId, fundId } = req.query;
+    const filter: any = {};
+    if (month) filter.month = parseInt(String(month), 10);
+    if (year) filter.year = parseInt(String(year), 10);
+    if (unitId) filter.unitId = parseInt(String(unitId), 10);
+    if (fundId) filter.fundId = parseInt(String(fundId), 10);
+
+    const data = await getDashboardMetrics(filter);
     res.json(data);
   } catch (error: any) {
     console.error('Error in /api/dashboard:', error);
@@ -226,7 +241,173 @@ apiRouter.post('/bank-accounts', requireAuth, async (req: AuthRequest, res: Resp
   }
 });
 
-// 7. Transactions & Double Entry
+// 7. FASE 2: TRANSAKSI KHUSUS (PENERIMAAN, PENGELUARAN, TRANSFER, JURNAL UMUM)
+apiRouter.post('/penerimaan', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const { date, incomeAccountId, unitId, fundId, cashBankType, cashBankId, amount, description, reference, attachmentUrl, status } = req.body;
+    if (!date || !incomeAccountId || !cashBankType || !cashBankId || !amount || !description) {
+      return res.status(400).json({ error: 'Field penerimaan tidak lengkap' });
+    }
+    const result = await createPenerimaan(
+      {
+        date,
+        incomeAccountId: parseInt(incomeAccountId, 10),
+        unitId: unitId ? parseInt(unitId, 10) : null,
+        fundId: fundId ? parseInt(fundId, 10) : null,
+        cashBankType,
+        cashBankId: parseInt(cashBankId, 10),
+        amount: parseFloat(amount),
+        description,
+        reference,
+        attachmentUrl,
+        status,
+      },
+      req.user
+    );
+    res.status(201).json(result);
+  } catch (error: any) {
+    console.error('Error creating penerimaan:', error);
+    res.status(400).json({ error: error.message || 'Gagal menyimpan penerimaan' });
+  }
+});
+
+apiRouter.post('/pengeluaran', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const { date, expenseAccountId, unitId, fundId, cashBankType, cashBankId, recipient, amount, description, reference, attachmentUrl, status, allowNegativeBalance } = req.body;
+    if (!date || !expenseAccountId || !cashBankType || !cashBankId || !amount || !description) {
+      return res.status(400).json({ error: 'Field pengeluaran tidak lengkap' });
+    }
+    const result = await createPengeluaran(
+      {
+        date,
+        expenseAccountId: parseInt(expenseAccountId, 10),
+        unitId: unitId ? parseInt(unitId, 10) : null,
+        fundId: fundId ? parseInt(fundId, 10) : null,
+        cashBankType,
+        cashBankId: parseInt(cashBankId, 10),
+        recipient: recipient || '',
+        amount: parseFloat(amount),
+        description,
+        reference,
+        attachmentUrl,
+        status,
+        allowNegativeBalance: !!allowNegativeBalance,
+      },
+      req.user
+    );
+    res.status(201).json(result);
+  } catch (error: any) {
+    console.error('Error creating pengeluaran:', error);
+    res.status(400).json({ error: error.message || 'Gagal menyimpan pengeluaran' });
+  }
+});
+
+apiRouter.post('/transfer', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const { date, fromType, fromId, toType, toId, amount, description, reference, attachmentUrl, status, allowNegativeBalance } = req.body;
+    if (!date || !fromType || !fromId || !toType || !toId || !amount) {
+      return res.status(400).json({ error: 'Field transfer kas/bank tidak lengkap' });
+    }
+    const result = await createTransfer(
+      {
+        date,
+        fromType,
+        fromId: parseInt(fromId, 10),
+        toType,
+        toId: parseInt(toId, 10),
+        amount: parseFloat(amount),
+        description,
+        reference,
+        attachmentUrl,
+        status,
+        allowNegativeBalance: !!allowNegativeBalance,
+      },
+      req.user
+    );
+    res.status(201).json(result);
+  } catch (error: any) {
+    console.error('Error creating transfer:', error);
+    res.status(400).json({ error: error.message || 'Gagal melakukan transfer kas/bank' });
+  }
+});
+
+apiRouter.post('/jurnal-umum', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const { date, description, reference, attachmentUrl, unitId, fundId, status, lines } = req.body;
+    if (!date || !description || !lines || !Array.isArray(lines) || lines.length < 2) {
+      return res.status(400).json({ error: 'Jurnal Umum harus memiliki minimal 2 pos akun (Debit & Kredit)' });
+    }
+    const result = await createJurnalUmum(
+      {
+        date,
+        description,
+        reference,
+        attachmentUrl,
+        unitId: unitId ? parseInt(unitId, 10) : null,
+        fundId: fundId ? parseInt(fundId, 10) : null,
+        status,
+        lines,
+      },
+      req.user
+    );
+    res.status(201).json(result);
+  } catch (error: any) {
+    console.error('Error creating jurnal umum:', error);
+    res.status(400).json({ error: error.message || 'Gagal menyimpan Jurnal Umum' });
+  }
+});
+
+// 8. WORKFLOW ACTIONS (SUBMIT, APPROVE, POST, REVERSE)
+apiRouter.post('/transactions/:id/submit', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const updated = await submitTransaction(id, req.user);
+    res.json({ success: true, transaction: updated });
+  } catch (error: any) {
+    console.error('Error submitting transaction:', error);
+    res.status(400).json({ error: error.message || 'Gagal mengajukan transaksi' });
+  }
+});
+
+apiRouter.post('/transactions/:id/approve', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const updated = await approveTransaction(id, req.user);
+    res.json({ success: true, transaction: updated });
+  } catch (error: any) {
+    console.error('Error approving transaction:', error);
+    res.status(400).json({ error: error.message || 'Gagal menyetujui transaksi' });
+  }
+});
+
+apiRouter.post('/transactions/:id/post', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { allowNegativeBalance } = req.body;
+    const journal = await postTransaction(id, req.user, !!allowNegativeBalance);
+    res.json({ success: true, journal });
+  } catch (error: any) {
+    console.error('Error posting transaction:', error);
+    res.status(400).json({ error: error.message || 'Gagal mem-posting transaksi' });
+  }
+});
+
+apiRouter.post('/transactions/:id/reverse', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    const { reason } = req.body;
+    if (!reason) {
+      return res.status(400).json({ error: 'Alasan pembatalan/koreksi wajib diisi' });
+    }
+    const result = await reverseTransaction(id, reason, req.user);
+    res.json({ success: true, result });
+  } catch (error: any) {
+    console.error('Error reversing transaction:', error);
+    res.status(400).json({ error: error.message || 'Gagal membatalkan transaksi' });
+  }
+});
+
+// 9. QUERY TRANSACTIONS & DETAILS
 apiRouter.get('/transactions', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const { status, type, unitId, fundId, startDate, endDate } = req.query;
@@ -258,59 +439,48 @@ apiRouter.get('/transactions/:id', requireAuth, async (req: AuthRequest, res: Re
   }
 });
 
-apiRouter.post('/transactions', requireAuth, async (req: AuthRequest, res: Response) => {
+// 10. BUKU KAS & BUKU BANK
+apiRouter.get('/cash-book', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const { date, type, unitId, fundId, description, reference, lines, autoPost } = req.body;
-    if (!date || !type || !description || !lines || !Array.isArray(lines) || lines.length < 2) {
-      return res.status(400).json({
-        error: 'Transaksi akuntansi wajib menyertakan minimal 2 baris jurnal (Debit & Kredit)',
-      });
+    const { cashAccountId, startDate, endDate, unitId, fundId } = req.query;
+    if (!cashAccountId) {
+      return res.status(400).json({ error: 'Akun kas wajib dipilih' });
     }
-
-    const created = await createTransaction(
-      { date, type, unitId, fundId, description, reference, lines, autoPost },
-      req.user
+    const data = await getCashBook(
+      parseInt(String(cashAccountId), 10),
+      startDate ? String(startDate) : undefined,
+      endDate ? String(endDate) : undefined,
+      unitId ? parseInt(String(unitId), 10) : undefined,
+      fundId ? parseInt(String(fundId), 10) : undefined
     );
-    res.status(201).json(created);
+    res.json(data);
   } catch (error: any) {
-    console.error('Error creating transaction:', error);
-    res.status(400).json({ error: error.message || 'Gagal menyimpan transaksi' });
+    console.error('Error fetching cash book:', error);
+    res.status(500).json({ error: error.message || 'Gagal memuat Buku Kas' });
   }
 });
 
-apiRouter.post('/transactions/:id/post', requireAuth, async (req: AuthRequest, res: Response) => {
+apiRouter.get('/bank-book', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const id = parseInt(req.params.id, 10);
-    if (req.user?.roleName !== 'SUPER_ADMIN' && req.user?.roleName !== 'BENDAHARA') {
-      return res.status(403).json({ error: 'Hanya Bendahara atau Super Admin yang dapat mem-posting transaksi' });
+    const { bankAccountId, startDate, endDate, unitId, fundId } = req.query;
+    if (!bankAccountId) {
+      return res.status(400).json({ error: 'Rekening bank wajib dipilih' });
     }
-    const journal = await postTransaction(id, req.user);
-    res.json({ success: true, journal });
+    const data = await getBankBook(
+      parseInt(String(bankAccountId), 10),
+      startDate ? String(startDate) : undefined,
+      endDate ? String(endDate) : undefined,
+      unitId ? parseInt(String(unitId), 10) : undefined,
+      fundId ? parseInt(String(fundId), 10) : undefined
+    );
+    res.json(data);
   } catch (error: any) {
-    console.error('Error posting transaction:', error);
-    res.status(400).json({ error: error.message || 'Gagal mem-posting transaksi' });
+    console.error('Error fetching bank book:', error);
+    res.status(500).json({ error: error.message || 'Gagal memuat Buku Bank' });
   }
 });
 
-apiRouter.post('/transactions/:id/reverse', requireAuth, async (req: AuthRequest, res: Response) => {
-  try {
-    const id = parseInt(req.params.id, 10);
-    const { reason } = req.body;
-    if (!reason) {
-      return res.status(400).json({ error: 'Alasan pembatalan/koreksi wajib diisi' });
-    }
-    if (req.user?.roleName !== 'SUPER_ADMIN' && req.user?.roleName !== 'BENDAHARA') {
-      return res.status(403).json({ error: 'Hanya Bendahara atau Super Admin yang dapat membatalkan transaksi' });
-    }
-    const result = await reverseTransaction(id, reason, req.user);
-    res.json({ success: true, result });
-  } catch (error: any) {
-    console.error('Error reversing transaction:', error);
-    res.status(400).json({ error: error.message || 'Gagal membatalkan transaksi' });
-  }
-});
-
-// 8. Journals
+// 11. JOURNALS & GENERAL LEDGER
 apiRouter.get('/journals', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const { startDate, endDate } = req.query;
@@ -325,7 +495,6 @@ apiRouter.get('/journals', requireAuth, async (req: AuthRequest, res: Response) 
   }
 });
 
-// 9. Buku Besar (General Ledger)
 apiRouter.get('/ledger', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const { accountId, startDate, endDate } = req.query;
@@ -344,7 +513,7 @@ apiRouter.get('/ledger', requireAuth, async (req: AuthRequest, res: Response) =>
   }
 });
 
-// 10. Audit Logs
+// 12. AUDIT LOGS
 apiRouter.get('/audit-logs', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 100;
@@ -356,7 +525,7 @@ apiRouter.get('/audit-logs', requireAuth, async (req: AuthRequest, res: Response
   }
 });
 
-// 11. User Management
+// 13. USERS MANAGEMENT
 apiRouter.get('/users', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const data = await getAllUsers();
@@ -387,5 +556,16 @@ apiRouter.put('/users/:id', requireAuth, async (req: AuthRequest, res: Response)
   } catch (error: any) {
     console.error('Error updating user:', error);
     res.status(500).json({ error: error.message || 'Gagal mengubah role pengguna' });
+  }
+});
+
+// 14. PHASE 2 AUTOMATED TEST SUITE RUNNER
+apiRouter.post('/testing/run', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const testResults = await runPhase2AutomatedTests(req.user);
+    res.json({ success: true, results: testResults });
+  } catch (error: any) {
+    console.error('Error running automated tests:', error);
+    res.status(500).json({ error: error.message || 'Gagal menjalankan pengujian akuntansi' });
   }
 });

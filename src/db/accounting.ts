@@ -15,11 +15,34 @@ import {
   users,
 } from './schema.ts';
 
+// Helper to execute query with automatic recovery if connection was idle/closed by Cloud SQL scale-to-zero proxy
+export async function executeWithRetry<T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> {
+  let attempt = 0;
+  while (true) {
+    try {
+      return await fn();
+    } catch (err: any) {
+      attempt++;
+      const isTransient =
+        err?.code === '57P01' ||
+        err?.code === 'ECONNRESET' ||
+        err?.message?.includes('terminating connection due to administrator command') ||
+        err?.message?.includes('Connection terminated unexpectedly');
+
+      if (attempt <= maxRetries && isTransient) {
+        await new Promise((resolve) => setTimeout(resolve, 500 * attempt));
+        continue;
+      }
+      throw err;
+    }
+  }
+}
+
 // Helper: Log audit trail
 export async function createAuditLog(
   userId: number | null,
   userEmail: string | null,
-  action: 'LOGIN' | 'LOGOUT' | 'CREATE' | 'UPDATE' | 'DELETE' | 'POST' | 'REVERSE' | 'APPROVE',
+  action: 'LOGIN' | 'LOGOUT' | 'CREATE' | 'UPDATE' | 'DELETE' | 'POST' | 'REVERSE' | 'APPROVE' | 'SUBMIT' | 'VOID',
   entityType: 'TRANSACTION' | 'JOURNAL' | 'ACCOUNT' | 'UNIT' | 'FUND' | 'USER' | 'CASH_BANK',
   entityId: string,
   details: string,
@@ -36,82 +59,60 @@ export async function createAuditLog(
       ipAddress,
     });
   } catch (err) {
-    console.error('Failed to write audit log:', err);
+    console.warn('Failed to write audit log:', err);
   }
 }
 
-// ---------------- MASTER DATA: UNITS ----------------
+// ---------------- MASTER DATA ----------------
+
 export async function getUnits() {
-  try {
+  return await executeWithRetry(async () => {
     return await db.select().from(units).orderBy(units.code);
-  } catch (error) {
-    console.error('Error fetching units:', error);
-    throw new Error('Gagal mengambil data unit/divisi', { cause: error });
-  }
+  });
 }
 
 export async function createUnit(data: { code: string; name: string; description?: string; isActive?: boolean }, user?: any) {
-  try {
+  return await executeWithRetry(async () => {
     const res = await db.insert(units).values(data).returning();
     await createAuditLog(user?.id, user?.email, 'CREATE', 'UNIT', String(res[0].id), `Tambah unit: ${res[0].name} (${res[0].code})`);
     return res[0];
-  } catch (error) {
-    console.error('Error creating unit:', error);
-    throw new Error('Gagal membuat unit/divisi baru', { cause: error });
-  }
+  });
 }
 
 export async function updateUnit(id: number, data: { name?: string; description?: string; isActive?: boolean }, user?: any) {
-  try {
+  return await executeWithRetry(async () => {
     const res = await db.update(units).set(data).where(eq(units.id, id)).returning();
     await createAuditLog(user?.id, user?.email, 'UPDATE', 'UNIT', String(id), `Update unit: ${res[0].name}`);
     return res[0];
-  } catch (error) {
-    console.error('Error updating unit:', error);
-    throw new Error('Gagal memperbarui unit/divisi', { cause: error });
-  }
+  });
 }
 
-// ---------------- MASTER DATA: FUNDS (SUMBER DANA) ----------------
 export async function getFunds() {
-  try {
+  return await executeWithRetry(async () => {
     return await db.select().from(funds).orderBy(funds.code);
-  } catch (error) {
-    console.error('Error fetching funds:', error);
-    throw new Error('Gagal mengambil data sumber dana', { cause: error });
-  }
+  });
 }
 
 export async function createFund(data: { code: string; name: string; type: string; description?: string; isActive?: boolean }, user?: any) {
-  try {
+  return await executeWithRetry(async () => {
     const res = await db.insert(funds).values(data).returning();
     await createAuditLog(user?.id, user?.email, 'CREATE', 'FUND', String(res[0].id), `Tambah sumber dana: ${res[0].name} (${res[0].code})`);
     return res[0];
-  } catch (error) {
-    console.error('Error creating fund:', error);
-    throw new Error('Gagal membuat sumber dana baru', { cause: error });
-  }
+  });
 }
 
 export async function updateFund(id: number, data: { name?: string; type?: string; description?: string; isActive?: boolean }, user?: any) {
-  try {
+  return await executeWithRetry(async () => {
     const res = await db.update(funds).set(data).where(eq(funds.id, id)).returning();
     await createAuditLog(user?.id, user?.email, 'UPDATE', 'FUND', String(id), `Update sumber dana: ${res[0].name}`);
     return res[0];
-  } catch (error) {
-    console.error('Error updating fund:', error);
-    throw new Error('Gagal memperbarui sumber dana', { cause: error });
-  }
+  });
 }
 
-// ---------------- MASTER DATA: CHART OF ACCOUNTS ----------------
 export async function getAccounts() {
-  try {
+  return await executeWithRetry(async () => {
     return await db.select().from(accounts).orderBy(accounts.code);
-  } catch (error) {
-    console.error('Error fetching accounts:', error);
-    throw new Error('Gagal mengambil data bagan akun (COA)', { cause: error });
-  }
+  });
 }
 
 export async function createAccount(data: {
@@ -123,14 +124,11 @@ export async function createAccount(data: {
   description?: string;
   isActive?: boolean;
 }, user?: any) {
-  try {
+  return await executeWithRetry(async () => {
     const res = await db.insert(accounts).values(data).returning();
     await createAuditLog(user?.id, user?.email, 'CREATE', 'ACCOUNT', String(res[0].id), `Tambah akun: [${res[0].code}] ${res[0].name}`);
     return res[0];
-  } catch (error) {
-    console.error('Error creating account:', error);
-    throw new Error('Gagal membuat akun baru', { cause: error });
-  }
+  });
 }
 
 export async function updateAccount(id: number, data: {
@@ -141,19 +139,15 @@ export async function updateAccount(id: number, data: {
   description?: string;
   isActive?: boolean;
 }, user?: any) {
-  try {
+  return await executeWithRetry(async () => {
     const res = await db.update(accounts).set(data).where(eq(accounts.id, id)).returning();
     await createAuditLog(user?.id, user?.email, 'UPDATE', 'ACCOUNT', String(id), `Update akun: [${res[0].code}] ${res[0].name}`);
     return res[0];
-  } catch (error) {
-    console.error('Error updating account:', error);
-    throw new Error('Gagal memperbarui akun', { cause: error });
-  }
+  });
 }
 
-// ---------------- MASTER DATA: KAS & BANK ----------------
 export async function getCashAccounts() {
-  try {
+  return await executeWithRetry(async () => {
     return await db
       .select({
         id: cashAccounts.id,
@@ -171,10 +165,7 @@ export async function getCashAccounts() {
       .leftJoin(accounts, eq(cashAccounts.accountId, accounts.id))
       .leftJoin(units, eq(cashAccounts.unitId, units.id))
       .orderBy(cashAccounts.id);
-  } catch (error) {
-    console.error('Error fetching cash accounts:', error);
-    throw new Error('Gagal mengambil data rekening kas', { cause: error });
-  }
+  });
 }
 
 export async function createCashAccount(data: {
@@ -184,7 +175,7 @@ export async function createCashAccount(data: {
   initialBalance: string;
   isActive?: boolean;
 }, user?: any) {
-  try {
+  return await executeWithRetry(async () => {
     const res = await db
       .insert(cashAccounts)
       .values({
@@ -194,14 +185,11 @@ export async function createCashAccount(data: {
       .returning();
     await createAuditLog(user?.id, user?.email, 'CREATE', 'CASH_BANK', String(res[0].id), `Tambah kas tunai: ${res[0].name}`);
     return res[0];
-  } catch (error) {
-    console.error('Error creating cash account:', error);
-    throw new Error('Gagal membuat rekening kas baru', { cause: error });
-  }
+  });
 }
 
 export async function getBankAccounts() {
-  try {
+  return await executeWithRetry(async () => {
     return await db
       .select({
         id: bankAccounts.id,
@@ -218,10 +206,7 @@ export async function getBankAccounts() {
       .from(bankAccounts)
       .leftJoin(accounts, eq(bankAccounts.accountId, accounts.id))
       .orderBy(bankAccounts.id);
-  } catch (error) {
-    console.error('Error fetching bank accounts:', error);
-    throw new Error('Gagal mengambil data rekening bank', { cause: error });
-  }
+  });
 }
 
 export async function createBankAccount(data: {
@@ -232,7 +217,7 @@ export async function createBankAccount(data: {
   initialBalance: string;
   isActive?: boolean;
 }, user?: any) {
-  try {
+  return await executeWithRetry(async () => {
     const res = await db
       .insert(bankAccounts)
       .values({
@@ -242,85 +227,492 @@ export async function createBankAccount(data: {
       .returning();
     await createAuditLog(user?.id, user?.email, 'CREATE', 'CASH_BANK', String(res[0].id), `Tambah rekening bank: ${res[0].bankName} - ${res[0].accountNumber}`);
     return res[0];
-  } catch (error) {
-    console.error('Error creating bank account:', error);
-    throw new Error('Gagal membuat rekening bank baru', { cause: error });
-  }
+  });
 }
 
-// ---------------- TRANSACTIONS & DOUBLE ENTRY ACCOUNTING ----------------
+// ---------------- NUMBER GENERATOR HELPERS ----------------
 
-export interface TransactionLineInput {
-  accountId: number;
-  description?: string;
-  debit: number;
-  credit: number;
+async function generateTransactionNumber(prefix: string, dateStr: string): Promise<string> {
+  const yearMonth = dateStr.replace(/-/g, '').substring(0, 6);
+  const countRes = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(transactions)
+    .where(sql`transaction_number LIKE ${prefix + '-' + yearMonth + '-%'}`);
+  const nextNum = Number(countRes[0]?.count || 0) + 1;
+  return `${prefix}-${yearMonth}-${String(nextNum).padStart(4, '0')}`;
 }
 
-export interface CreateTransactionInput {
+async function generateJournalNumber(dateStr: string): Promise<string> {
+  const yearMonth = dateStr.replace(/-/g, '').substring(0, 6);
+  const countRes = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(journals)
+    .where(sql`journal_number LIKE ${'JRN-' + yearMonth + '-%'}`);
+  const nextNum = Number(countRes[0]?.count || 0) + 1;
+  return `JRN-${yearMonth}-${String(nextNum).padStart(4, '0')}`;
+}
+
+// ---------------- TRANSACTION CREATION ENGINES ----------------
+
+// 1. PENERIMAAN KAS/BANK
+export interface CreatePenerimaanInput {
   date: string; // YYYY-MM-DD
-  type: 'PENERIMAAN' | 'PENGELUARAN' | 'MUTASI_KAS_BANK' | 'PENYESUAIAN';
+  incomeAccountId: number;
   unitId?: number | null;
   fundId?: number | null;
+  cashBankType: 'KAS' | 'BANK';
+  cashBankId: number; // cashAccounts.id or bankAccounts.id
+  amount: number;
   description: string;
   reference?: string;
-  lines: TransactionLineInput[];
-  autoPost?: boolean;
+  attachmentUrl?: string;
+  status?: 'DRAFT' | 'DIAJUKAN' | 'POSTED';
 }
 
-export async function createTransaction(input: CreateTransactionInput, user: any) {
-  try {
-    // 1. Double Entry validation: Total Debit MUST equal Total Credit
-    let totalDebit = 0;
-    let totalCredit = 0;
+export async function createPenerimaan(input: CreatePenerimaanInput, user: any) {
+  return await executeWithRetry(async () => {
+    if (input.amount <= 0) throw new Error('Nominal transaksi harus lebih besar dari 0');
+    if (!input.incomeAccountId) throw new Error('Akun pendapatan wajib dipilih');
+    if (!input.cashBankId) throw new Error('Kas atau rekening bank wajib dipilih');
 
-    for (const line of input.lines) {
-      totalDebit += Number(line.debit || 0);
-      totalCredit += Number(line.credit || 0);
+    let cashAccountId: number | null = null;
+    let bankAccountId: number | null = null;
+    let coaKasBankAccountId: number;
+
+    if (input.cashBankType === 'KAS') {
+      const [c] = await db.select().from(cashAccounts).where(eq(cashAccounts.id, input.cashBankId));
+      if (!c) throw new Error('Rekening kas tidak ditemukan');
+      cashAccountId = c.id;
+      coaKasBankAccountId = c.accountId;
+    } else {
+      const [b] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, input.cashBankId));
+      if (!b) throw new Error('Rekening bank tidak ditemukan');
+      bankAccountId = b.id;
+      coaKasBankAccountId = b.accountId;
     }
 
-    // Round to 2 decimal places to prevent float precision issues
-    totalDebit = Math.round(totalDebit * 100) / 100;
-    totalCredit = Math.round(totalCredit * 100) / 100;
+    const transactionNumber = await generateTransactionNumber('KM', input.date);
+    const isAutoPost = input.status === 'POSTED' && (user.roleName === 'SUPER_ADMIN' || user.roleName === 'BENDAHARA');
+    const initialStatus = isAutoPost ? 'POSTED' : input.status || 'DRAFT';
 
-    if (Math.abs(totalDebit - totalCredit) > 0.001) {
-      throw new Error(`Double-Entry Error: Jurnal tidak balance! Total Debit (Rp ${totalDebit.toLocaleString('id-ID')}) != Total Kredit (Rp ${totalCredit.toLocaleString('id-ID')})`);
-    }
-
-    if (totalDebit <= 0) {
-      throw new Error('Nilai transaksi harus lebih besar dari 0');
-    }
-
-    const countRes = await db.select({ count: sql<number>`count(*)` }).from(transactions);
-    const nextNum = Number(countRes[0]?.count || 0) + 1;
-    const yearMonth = input.date.replace(/-/g, '').substring(0, 6);
-    const transactionNumber = `TRX-${yearMonth}-${String(nextNum).padStart(4, '0')}`;
-
-    const isAutoPost = input.autoPost && (user.roleName === 'SUPER_ADMIN' || user.roleName === 'BENDAHARA');
-
-    const newTx = await db.transaction(async (tx) => {
-      // Insert transaction header as DRAFT initially
-      const [insertedTx] = await tx
+    const result = await db.transaction(async (tx) => {
+      const [newTrx] = await tx
         .insert(transactions)
         .values({
           transactionNumber,
           date: input.date,
-          type: input.type,
+          type: 'PENERIMAAN',
           unitId: input.unitId || null,
           fundId: input.fundId || null,
           description: input.description,
           reference: input.reference || null,
+          attachmentUrl: input.attachmentUrl || null,
+          totalAmount: input.amount.toFixed(2),
+          status: 'DRAFT',
+          cashBankType: input.cashBankType,
+          cashAccountId,
+          bankAccountId,
+          createdById: user.id,
+        })
+        .returning();
+
+      // Line 1: DEBIT Kas/Bank
+      await tx.insert(transactionLines).values({
+        transactionId: newTrx.id,
+        accountId: coaKasBankAccountId,
+        description: `Penerimaan ke ${input.cashBankType}`,
+        debit: input.amount.toFixed(2),
+        credit: '0.00',
+        lineNumber: 1,
+      });
+
+      // Line 2: KREDIT Pendapatan
+      await tx.insert(transactionLines).values({
+        transactionId: newTrx.id,
+        accountId: input.incomeAccountId,
+        description: input.description,
+        debit: '0.00',
+        credit: input.amount.toFixed(2),
+        lineNumber: 2,
+      });
+
+      if (isAutoPost) {
+        await postTransactionInternal(tx, newTrx.id, user, false);
+        const [posted] = await tx.select().from(transactions).where(eq(transactions.id, newTrx.id));
+        return posted;
+      } else if (input.status === 'DIAJUKAN') {
+        const [sub] = await tx
+          .update(transactions)
+          .set({ status: 'DIAJUKAN' })
+          .where(eq(transactions.id, newTrx.id))
+          .returning();
+        return sub;
+      }
+
+      return newTrx;
+    });
+
+    await createAuditLog(
+      user.id,
+      user.email,
+      isAutoPost ? 'POST' : 'CREATE',
+      'TRANSACTION',
+      String(result.id),
+      `Penerimaan ${result.transactionNumber} senilai Rp ${input.amount.toLocaleString('id-ID')} (${result.status})`
+    );
+
+    return result;
+  });
+}
+
+// 2. PENGELUARAN KAS/BANK
+export interface CreatePengeluaranInput {
+  date: string;
+  expenseAccountId: number;
+  unitId?: number | null;
+  fundId?: number | null;
+  cashBankType: 'KAS' | 'BANK';
+  cashBankId: number;
+  recipient: string;
+  amount: number;
+  description: string;
+  reference?: string;
+  attachmentUrl?: string;
+  status?: 'DRAFT' | 'DIAJUKAN' | 'POSTED';
+  allowNegativeBalance?: boolean;
+}
+
+export async function createPengeluaran(input: CreatePengeluaranInput, user: any) {
+  return await executeWithRetry(async () => {
+    if (input.amount <= 0) throw new Error('Nominal transaksi harus lebih besar dari 0');
+    if (!input.expenseAccountId) throw new Error('Akun beban wajib dipilih');
+    if (!input.cashBankId) throw new Error('Kas atau rekening bank wajib dipilih');
+
+    let cashAccountId: number | null = null;
+    let bankAccountId: number | null = null;
+    let coaKasBankAccountId: number;
+    let currentBal = 0;
+    let accountDisplayName = '';
+
+    if (input.cashBankType === 'KAS') {
+      const [c] = await db.select().from(cashAccounts).where(eq(cashAccounts.id, input.cashBankId));
+      if (!c) throw new Error('Rekening kas tidak ditemukan');
+      cashAccountId = c.id;
+      coaKasBankAccountId = c.accountId;
+      currentBal = Number(c.currentBalance);
+      accountDisplayName = c.name;
+    } else {
+      const [b] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, input.cashBankId));
+      if (!b) throw new Error('Rekening bank tidak ditemukan');
+      bankAccountId = b.id;
+      coaKasBankAccountId = b.accountId;
+      currentBal = Number(b.currentBalance);
+      accountDisplayName = `${b.bankName} (${b.accountNumber})`;
+    }
+
+    const isAutoPost = input.status === 'POSTED' && (user.roleName === 'SUPER_ADMIN' || user.roleName === 'BENDAHARA');
+
+    // Negative balance validation on posting
+    if (isAutoPost && currentBal - input.amount < 0 && !input.allowNegativeBalance) {
+      throw new Error(
+        `Saldo ${accountDisplayName} tidak mencukupi! Saldo saat ini Rp ${currentBal.toLocaleString(
+          'id-ID'
+        )}, Pengeluaran Rp ${input.amount.toLocaleString(
+          'id-ID'
+        )}. Saldo tidak boleh negatif kecuali disetujui administrator.`
+      );
+    }
+
+    const transactionNumber = await generateTransactionNumber('KK', input.date);
+
+    const result = await db.transaction(async (tx) => {
+      const [newTrx] = await tx
+        .insert(transactions)
+        .values({
+          transactionNumber,
+          date: input.date,
+          type: 'PENGELUARAN',
+          unitId: input.unitId || null,
+          fundId: input.fundId || null,
+          description: input.description,
+          recipient: input.recipient || null,
+          reference: input.reference || null,
+          attachmentUrl: input.attachmentUrl || null,
+          totalAmount: input.amount.toFixed(2),
+          status: 'DRAFT',
+          cashBankType: input.cashBankType,
+          cashAccountId,
+          bankAccountId,
+          createdById: user.id,
+        })
+        .returning();
+
+      // Line 1: DEBIT Akun Beban
+      await tx.insert(transactionLines).values({
+        transactionId: newTrx.id,
+        accountId: input.expenseAccountId,
+        description: input.description,
+        debit: input.amount.toFixed(2),
+        credit: '0.00',
+        lineNumber: 1,
+      });
+
+      // Line 2: KREDIT Kas/Bank
+      await tx.insert(transactionLines).values({
+        transactionId: newTrx.id,
+        accountId: coaKasBankAccountId,
+        description: `Pengeluaran dari ${input.cashBankType} kepada ${input.recipient || '-'}`,
+        debit: '0.00',
+        credit: input.amount.toFixed(2),
+        lineNumber: 2,
+      });
+
+      if (isAutoPost) {
+        await postTransactionInternal(tx, newTrx.id, user, !!input.allowNegativeBalance);
+        const [posted] = await tx.select().from(transactions).where(eq(transactions.id, newTrx.id));
+        return posted;
+      } else if (input.status === 'DIAJUKAN') {
+        const [sub] = await tx
+          .update(transactions)
+          .set({ status: 'DIAJUKAN' })
+          .where(eq(transactions.id, newTrx.id))
+          .returning();
+        return sub;
+      }
+
+      return newTrx;
+    });
+
+    await createAuditLog(
+      user.id,
+      user.email,
+      isAutoPost ? 'POST' : 'CREATE',
+      'TRANSACTION',
+      String(result.id),
+      `Pengeluaran ${result.transactionNumber} senilai Rp ${input.amount.toLocaleString('id-ID')} kepada ${input.recipient || '-'} (${result.status})`
+    );
+
+    return result;
+  });
+}
+
+// 3. TRANSFER ANTAR KAS & BANK
+export interface CreateTransferInput {
+  date: string;
+  fromType: 'KAS' | 'BANK';
+  fromId: number;
+  toType: 'KAS' | 'BANK';
+  toId: number;
+  amount: number;
+  description: string;
+  reference?: string;
+  attachmentUrl?: string;
+  status?: 'DRAFT' | 'DIAJUKAN' | 'POSTED';
+  allowNegativeBalance?: boolean;
+}
+
+export async function createTransfer(input: CreateTransferInput, user: any) {
+  return await executeWithRetry(async () => {
+    if (input.amount <= 0) throw new Error('Nominal transfer harus lebih besar dari 0');
+    if (input.fromType === input.toType && input.fromId === input.toId) {
+      throw new Error('Akun asal dan akun tujuan transfer tidak boleh sama');
+    }
+
+    let sourceCoaId: number;
+    let targetCoaId: number;
+    let sourceBal = 0;
+    let sourceDisplayName = '';
+    let targetDisplayName = '';
+
+    let sourceCashId: number | null = null;
+    let sourceBankId: number | null = null;
+    let targetCashId: number | null = null;
+    let targetBankId: number | null = null;
+
+    if (input.fromType === 'KAS') {
+      const [c] = await db.select().from(cashAccounts).where(eq(cashAccounts.id, input.fromId));
+      if (!c) throw new Error('Kas asal tidak ditemukan');
+      sourceCoaId = c.accountId;
+      sourceCashId = c.id;
+      sourceBal = Number(c.currentBalance);
+      sourceDisplayName = `Kas: ${c.name}`;
+    } else {
+      const [b] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, input.fromId));
+      if (!b) throw new Error('Bank asal tidak ditemukan');
+      sourceCoaId = b.accountId;
+      sourceBankId = b.id;
+      sourceBal = Number(b.currentBalance);
+      sourceDisplayName = `Bank: ${b.bankName} (${b.accountNumber})`;
+    }
+
+    if (input.toType === 'KAS') {
+      const [c] = await db.select().from(cashAccounts).where(eq(cashAccounts.id, input.toId));
+      if (!c) throw new Error('Kas tujuan tidak ditemukan');
+      targetCoaId = c.accountId;
+      targetCashId = c.id;
+      targetDisplayName = `Kas: ${c.name}`;
+    } else {
+      const [b] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, input.toId));
+      if (!b) throw new Error('Bank tujuan tidak ditemukan');
+      targetCoaId = b.accountId;
+      targetBankId = b.id;
+      targetDisplayName = `Bank: ${b.bankName} (${b.accountNumber})`;
+    }
+
+    const isAutoPost = input.status === 'POSTED' && (user.roleName === 'SUPER_ADMIN' || user.roleName === 'BENDAHARA');
+
+    if (isAutoPost && sourceBal - input.amount < 0 && !input.allowNegativeBalance) {
+      throw new Error(
+        `Saldo ${sourceDisplayName} tidak mencukupi untuk transfer! Saldo saat ini Rp ${sourceBal.toLocaleString(
+          'id-ID'
+        )}, Transfer Rp ${input.amount.toLocaleString('id-ID')}.`
+      );
+    }
+
+    const transactionNumber = await generateTransactionNumber('TRF', input.date);
+
+    const result = await db.transaction(async (tx) => {
+      const [newTrx] = await tx
+        .insert(transactions)
+        .values({
+          transactionNumber,
+          date: input.date,
+          type: 'TRANSFER',
+          description: input.description || `Transfer dari ${sourceDisplayName} ke ${targetDisplayName}`,
+          reference: input.reference || null,
+          attachmentUrl: input.attachmentUrl || null,
+          totalAmount: input.amount.toFixed(2),
+          status: 'DRAFT',
+          cashBankType: input.fromType,
+          cashAccountId: sourceCashId,
+          bankAccountId: sourceBankId,
+          toCashBankType: input.toType,
+          toCashAccountId: targetCashId,
+          toBankAccountId: targetBankId,
+          createdById: user.id,
+        })
+        .returning();
+
+      // Line 1: DEBIT Kas/Bank Tujuan
+      await tx.insert(transactionLines).values({
+        transactionId: newTrx.id,
+        accountId: targetCoaId,
+        description: `Transfer masuk dari ${sourceDisplayName}`,
+        debit: input.amount.toFixed(2),
+        credit: '0.00',
+        lineNumber: 1,
+      });
+
+      // Line 2: KREDIT Kas/Bank Asal
+      await tx.insert(transactionLines).values({
+        transactionId: newTrx.id,
+        accountId: sourceCoaId,
+        description: `Transfer keluar ke ${targetDisplayName}`,
+        debit: '0.00',
+        credit: input.amount.toFixed(2),
+        lineNumber: 2,
+      });
+
+      if (isAutoPost) {
+        await postTransactionInternal(tx, newTrx.id, user, !!input.allowNegativeBalance);
+        const [posted] = await tx.select().from(transactions).where(eq(transactions.id, newTrx.id));
+        return posted;
+      } else if (input.status === 'DIAJUKAN') {
+        const [sub] = await tx
+          .update(transactions)
+          .set({ status: 'DIAJUKAN' })
+          .where(eq(transactions.id, newTrx.id))
+          .returning();
+        return sub;
+      }
+
+      return newTrx;
+    });
+
+    await createAuditLog(
+      user.id,
+      user.email,
+      isAutoPost ? 'POST' : 'CREATE',
+      'TRANSACTION',
+      String(result.id),
+      `Transfer ${result.transactionNumber} Rp ${input.amount.toLocaleString('id-ID')} (${sourceDisplayName} -> ${targetDisplayName})`
+    );
+
+    return result;
+  });
+}
+
+// 4. JURNAL UMUM (MULTI-LINE / PENYESUAIAN)
+export interface CreateJurnalUmumInput {
+  date: string;
+  description: string;
+  reference?: string;
+  attachmentUrl?: string;
+  unitId?: number | null;
+  fundId?: number | null;
+  status?: 'DRAFT' | 'DIAJUKAN' | 'POSTED';
+  lines: Array<{
+    accountId: number;
+    description?: string;
+    debit: number;
+    credit: number;
+  }>;
+}
+
+export async function createJurnalUmum(input: CreateJurnalUmumInput, user: any) {
+  return await executeWithRetry(async () => {
+    if (!input.lines || input.lines.length < 2) {
+      throw new Error('Jurnal Umum harus memiliki minimal 2 pos akun (Debit dan Kredit)');
+    }
+
+    let totalDebit = 0;
+    let totalCredit = 0;
+
+    for (const l of input.lines) {
+      totalDebit += Number(l.debit || 0);
+      totalCredit += Number(l.credit || 0);
+    }
+
+    totalDebit = Math.round(totalDebit * 100) / 100;
+    totalCredit = Math.round(totalCredit * 100) / 100;
+
+    if (Math.abs(totalDebit - totalCredit) > 0.001) {
+      throw new Error(
+        `Jurnal TIDAK BALANCE! Total Debit (Rp ${totalDebit.toLocaleString(
+          'id-ID'
+        )}) tidak sama dengan Total Kredit (Rp ${totalCredit.toLocaleString('id-ID')}).`
+      );
+    }
+
+    if (totalDebit <= 0) {
+      throw new Error('Nilai jurnal harus lebih besar dari 0');
+    }
+
+    const transactionNumber = await generateTransactionNumber('JU', input.date);
+    const isAutoPost = input.status === 'POSTED' && (user.roleName === 'SUPER_ADMIN' || user.roleName === 'BENDAHARA');
+
+    const result = await db.transaction(async (tx) => {
+      const [newTrx] = await tx
+        .insert(transactions)
+        .values({
+          transactionNumber,
+          date: input.date,
+          type: 'JURNAL_UMUM',
+          unitId: input.unitId || null,
+          fundId: input.fundId || null,
+          description: input.description,
+          reference: input.reference || null,
+          attachmentUrl: input.attachmentUrl || null,
           totalAmount: totalDebit.toFixed(2),
           status: 'DRAFT',
           createdById: user.id,
         })
         .returning();
 
-      // Insert transaction lines
       for (let i = 0; i < input.lines.length; i++) {
         const l = input.lines[i];
         await tx.insert(transactionLines).values({
-          transactionId: insertedTx.id,
+          transactionId: newTrx.id,
           accountId: l.accountId,
           description: l.description || input.description,
           debit: Number(l.debit || 0).toFixed(2),
@@ -329,14 +721,20 @@ export async function createTransaction(input: CreateTransactionInput, user: any
         });
       }
 
-      // If posting, generate Journal and update balances
       if (isAutoPost) {
-        await postTransactionInternal(tx, insertedTx.id, user);
-        const [postedTx] = await tx.select().from(transactions).where(eq(transactions.id, insertedTx.id));
-        return postedTx;
+        await postTransactionInternal(tx, newTrx.id, user, false);
+        const [posted] = await tx.select().from(transactions).where(eq(transactions.id, newTrx.id));
+        return posted;
+      } else if (input.status === 'DIAJUKAN') {
+        const [sub] = await tx
+          .update(transactions)
+          .set({ status: 'DIAJUKAN' })
+          .where(eq(transactions.id, newTrx.id))
+          .returning();
+        return sub;
       }
 
-      return insertedTx;
+      return newTrx;
     });
 
     await createAuditLog(
@@ -344,23 +742,86 @@ export async function createTransaction(input: CreateTransactionInput, user: any
       user.email,
       isAutoPost ? 'POST' : 'CREATE',
       'TRANSACTION',
-      String(newTx.id),
-      `Transaksi ${newTx.transactionNumber} (${isAutoPost ? 'POSTED' : 'DRAFT'}): ${input.description} senilai Rp ${totalDebit.toLocaleString('id-ID')}`
+      String(result.id),
+      `Jurnal Umum ${result.transactionNumber} senilai Rp ${totalDebit.toLocaleString('id-ID')} (${result.status})`
     );
 
-    return newTx;
-  } catch (error: any) {
-    console.error('Error in createTransaction:', error);
-    throw new Error(error.message || 'Gagal menyimpan transaksi akuntansi', { cause: error });
-  }
+    return result;
+  });
 }
 
-// Internal posting logic shared between autoPost and postTransaction
-async function postTransactionInternal(tx: any, transactionId: number, user: any) {
+// ---------------- WORKFLOW TRANSITIONS: AJUKAN, SETUJUI, POSTING, VOID/REVERSE ----------------
+
+export async function submitTransaction(transactionId: number, user: any) {
+  return await executeWithRetry(async () => {
+    const [trx] = await db.select().from(transactions).where(eq(transactions.id, transactionId));
+    if (!trx) throw new Error('Transaksi tidak ditemukan');
+    if (trx.status !== 'DRAFT') throw new Error(`Hanya transaksi berstatus DRAFT yang dapat diajukan (status saat ini: ${trx.status})`);
+
+    const [updated] = await db
+      .update(transactions)
+      .set({ status: 'DIAJUKAN' })
+      .where(eq(transactions.id, transactionId))
+      .returning();
+
+    await createAuditLog(user.id, user.email, 'SUBMIT', 'TRANSACTION', String(transactionId), `Pengajuan transaksi ${trx.transactionNumber}`);
+    return updated;
+  });
+}
+
+export async function approveTransaction(transactionId: number, user: any) {
+  return await executeWithRetry(async () => {
+    if (user.roleName !== 'SUPER_ADMIN' && user.roleName !== 'BENDAHARA' && user.roleName !== 'PIMPINAN') {
+      throw new Error('Anda tidak memiliki wewenang untuk menyetujui transaksi');
+    }
+
+    const [trx] = await db.select().from(transactions).where(eq(transactions.id, transactionId));
+    if (!trx) throw new Error('Transaksi tidak ditemukan');
+    if (trx.status !== 'DIAJUKAN') throw new Error(`Hanya transaksi dengan status DIAJUKAN yang dapat disetujui (status saat ini: ${trx.status})`);
+
+    const [updated] = await db
+      .update(transactions)
+      .set({
+        status: 'DISETUJUI',
+        approvedById: user.id,
+        approvedAt: new Date(),
+      })
+      .where(eq(transactions.id, transactionId))
+      .returning();
+
+    await createAuditLog(user.id, user.email, 'APPROVE', 'TRANSACTION', String(transactionId), `Persetujuan transaksi ${trx.transactionNumber}`);
+    return updated;
+  });
+}
+
+export async function postTransaction(transactionId: number, user: any, allowNegativeBalance = false) {
+  return await executeWithRetry(async () => {
+    if (user.roleName !== 'SUPER_ADMIN' && user.roleName !== 'BENDAHARA') {
+      throw new Error('Hanya Bendahara atau Super Admin yang dapat mem-posting transaksi');
+    }
+
+    const journal = await db.transaction(async (tx) => {
+      return await postTransactionInternal(tx, transactionId, user, allowNegativeBalance);
+    });
+
+    await createAuditLog(
+      user.id,
+      user.email,
+      'POST',
+      'TRANSACTION',
+      String(transactionId),
+      `Posting transaksi #${transactionId} menghasilkan Jurnal ${journal.journalNumber}`
+    );
+
+    return journal;
+  });
+}
+
+async function postTransactionInternal(tx: any, transactionId: number, user: any, allowNegativeBalance: boolean) {
   const [trx] = await tx.select().from(transactions).where(eq(transactions.id, transactionId));
   if (!trx) throw new Error('Transaksi tidak ditemukan');
   if (trx.status === 'POSTED') throw new Error('Transaksi sudah diposting');
-  if (trx.status === 'REVERSED') throw new Error('Transaksi yang dibatalkan tidak dapat diposting');
+  if (trx.status === 'REVERSED' || trx.status === 'VOID') throw new Error('Transaksi yang dibatalkan tidak dapat diposting');
 
   const lines = await tx.select().from(transactionLines).where(eq(transactionLines.transactionId, transactionId));
   if (!lines || lines.length === 0) throw new Error('Transaksi tidak memiliki baris jurnal');
@@ -379,12 +840,39 @@ async function postTransactionInternal(tx: any, transactionId: number, user: any
     throw new Error(`Double-Entry Error: Jurnal tidak balance! Debit Rp ${totalDebit} != Kredit Rp ${totalCredit}`);
   }
 
-  const jrnCountRes = await tx.select({ count: sql<number>`count(*)` }).from(journals);
-  const nextJrnNum = Number(jrnCountRes[0]?.count || 0) + 1;
-  const yearMonth = trx.date.replace(/-/g, '').substring(0, 6);
-  const journalNumber = `JRN-${yearMonth}-${String(nextJrnNum).padStart(4, '0')}`;
+  // Pre-check for negative balance on Cash/Bank accounts if debit < credit (credit reduces balance)
+  for (const l of lines) {
+    const netChange = Number(l.debit) - Number(l.credit);
+    if (netChange < 0 && !allowNegativeBalance) {
+      // Check cash accounts
+      const [cash] = await tx.select().from(cashAccounts).where(eq(cashAccounts.accountId, l.accountId));
+      if (cash && Number(cash.currentBalance) + netChange < 0) {
+        throw new Error(
+          `Posting Ditolak: Saldo ${cash.name} tidak mencukupi (Saldo Rp ${Number(
+            cash.currentBalance
+          ).toLocaleString('id-ID')}, Dibutuhkan Rp ${Math.abs(netChange).toLocaleString(
+            'id-ID'
+          )}). Saldo tidak boleh negatif!`
+        );
+      }
 
-  // Insert Journal header
+      // Check bank accounts
+      const [bank] = await tx.select().from(bankAccounts).where(eq(bankAccounts.accountId, l.accountId));
+      if (bank && Number(bank.currentBalance) + netChange < 0) {
+        throw new Error(
+          `Posting Ditolak: Saldo ${bank.bankName} (${bank.accountNumber}) tidak mencukupi (Saldo Rp ${Number(
+            bank.currentBalance
+          ).toLocaleString('id-ID')}, Dibutuhkan Rp ${Math.abs(netChange).toLocaleString(
+            'id-ID'
+          )}). Saldo tidak boleh negatif!`
+        );
+      }
+    }
+  }
+
+  const journalNumber = await generateJournalNumber(trx.date);
+
+  // Insert Journal Header
   const [newJournal] = await tx
     .insert(journals)
     .values({
@@ -392,6 +880,7 @@ async function postTransactionInternal(tx: any, transactionId: number, user: any
       transactionId: trx.id,
       date: trx.date,
       description: trx.description,
+      attachmentUrl: trx.attachmentUrl || null,
       totalDebit: totalDebit.toFixed(2),
       totalCredit: totalCredit.toFixed(2),
       isBalanced: true,
@@ -408,7 +897,7 @@ async function postTransactionInternal(tx: any, transactionId: number, user: any
       accountId: l.accountId,
       unitId: trx.unitId,
       fundId: trx.fundId,
-      description: l.description,
+      description: l.description || trx.description,
       debit: l.debit,
       credit: l.credit,
       lineNumber: i + 1,
@@ -416,7 +905,7 @@ async function postTransactionInternal(tx: any, transactionId: number, user: any
 
     const netChange = Number(l.debit) - Number(l.credit);
 
-    // Update cash account if this accountId is mapped
+    // Update cash account balance
     await tx
       .update(cashAccounts)
       .set({
@@ -424,7 +913,7 @@ async function postTransactionInternal(tx: any, transactionId: number, user: any
       })
       .where(eq(cashAccounts.accountId, l.accountId));
 
-    // Update bank account if this accountId is mapped
+    // Update bank account balance
     await tx
       .update(bankAccounts)
       .set({
@@ -433,7 +922,7 @@ async function postTransactionInternal(tx: any, transactionId: number, user: any
       .where(eq(bankAccounts.accountId, l.accountId));
   }
 
-  // Update transaction status
+  // Update transaction status to POSTED
   await tx
     .update(transactions)
     .set({
@@ -446,45 +935,26 @@ async function postTransactionInternal(tx: any, transactionId: number, user: any
   return newJournal;
 }
 
-export async function postTransaction(transactionId: number, user: any) {
-  try {
-    const newJournal = await db.transaction(async (tx) => {
-      return await postTransactionInternal(tx, transactionId, user);
-    });
-
-    await createAuditLog(
-      user.id,
-      user.email,
-      'POST',
-      'TRANSACTION',
-      String(transactionId),
-      `Posting transaksi akuntansi ID #${transactionId} menghasilkan Jurnal ${newJournal.journalNumber}`
-    );
-
-    return newJournal;
-  } catch (error: any) {
-    console.error('Error posting transaction:', error);
-    throw new Error(error.message || 'Gagal mem-posting transaksi', { cause: error });
-  }
-}
-
-// Reversal / Koreksi Transaksi (No permanent deletion!)
+// ---------------- REVERSAL / VOID / KOREKSI ----------------
 export async function reverseTransaction(transactionId: number, reason: string, user: any) {
-  try {
+  return await executeWithRetry(async () => {
+    if (user.roleName !== 'SUPER_ADMIN' && user.roleName !== 'BENDAHARA') {
+      throw new Error('Hanya Bendahara atau Super Admin yang dapat membatalkan transaksi');
+    }
+
     const result = await db.transaction(async (tx) => {
       const [trx] = await tx.select().from(transactions).where(eq(transactions.id, transactionId));
       if (!trx) throw new Error('Transaksi tidak ditemukan');
-      if (trx.status !== 'POSTED') throw new Error('Hanya transaksi dengan status POSTED yang dapat dibatalkan/dikoreksi');
+      if (trx.status !== 'POSTED') {
+        throw new Error('Hanya transaksi dengan status POSTED yang dapat dibatalkan melalui mekanisme reversal akuntansi');
+      }
 
       const lines = await tx.select().from(transactionLines).where(eq(transactionLines.transactionId, transactionId));
-
-      const countRes = await tx.select({ count: sql<number>`count(*)` }).from(transactions);
-      const nextNum = Number(countRes[0]?.count || 0) + 1;
       const today = new Date().toISOString().split('T')[0];
-      const yearMonth = today.replace(/-/g, '').substring(0, 6);
-      const reversalNumber = `TRX-${yearMonth}-${String(nextNum).padStart(4, '0')}`;
+      const reversalNumber = await generateTransactionNumber('REV', today);
+      const reversalJrnNumber = await generateJournalNumber(today);
 
-      // Insert reversal transaction
+      // Insert reversal transaction record
       const [revTx] = await tx
         .insert(transactions)
         .values({
@@ -493,7 +963,7 @@ export async function reverseTransaction(transactionId: number, reason: string, 
           type: trx.type,
           unitId: trx.unitId,
           fundId: trx.fundId,
-          description: `[KOREKSI/PEMBALIKAN] ${trx.transactionNumber}: ${reason}`,
+          description: `[REVERSAL/PEMBALIKAN] ${trx.transactionNumber}: ${reason}`,
           reference: trx.transactionNumber,
           totalAmount: trx.totalAmount,
           status: 'POSTED',
@@ -504,18 +974,14 @@ export async function reverseTransaction(transactionId: number, reason: string, 
         })
         .returning();
 
-      // Inverted lines: debit becomes credit, credit becomes debit
-      const jrnCountRes = await tx.select({ count: sql<number>`count(*)` }).from(journals);
-      const nextJrnNum = Number(jrnCountRes[0]?.count || 0) + 1;
-      const reversalJrnNumber = `JRN-${yearMonth}-${String(nextJrnNum).padStart(4, '0')}`;
-
+      // Inverted journal
       const [revJournal] = await tx
         .insert(journals)
         .values({
           journalNumber: reversalJrnNumber,
           transactionId: revTx.id,
           date: today,
-          description: `[KOREKSI/PEMBALIKAN] Jurnal untuk ${trx.transactionNumber}: ${reason}`,
+          description: `[REVERSAL] Pembatalan ${trx.transactionNumber}: ${reason}`,
           totalDebit: trx.totalAmount,
           totalCredit: trx.totalAmount,
           isBalanced: true,
@@ -526,7 +992,7 @@ export async function reverseTransaction(transactionId: number, reason: string, 
 
       for (let i = 0; i < lines.length; i++) {
         const l = lines[i];
-        // Swapping debit and credit
+        // Invert debit and credit
         const revDebit = l.credit;
         const revCredit = l.debit;
 
@@ -550,7 +1016,6 @@ export async function reverseTransaction(transactionId: number, reason: string, 
           lineNumber: i + 1,
         });
 
-        // Revert Cash/Bank balances
         const netChange = Number(revDebit) - Number(revCredit);
 
         await tx
@@ -568,16 +1033,8 @@ export async function reverseTransaction(transactionId: number, reason: string, 
           .where(eq(bankAccounts.accountId, l.accountId));
       }
 
-      // Mark original transaction and associated journals as REVERSED
-      await tx
-        .update(transactions)
-        .set({ status: 'REVERSED' })
-        .where(eq(transactions.id, transactionId));
-
-      await tx
-        .update(journals)
-        .set({ status: 'REVERSED' })
-        .where(eq(journals.transactionId, transactionId));
+      await tx.update(transactions).set({ status: 'REVERSED' }).where(eq(transactions.id, transactionId));
+      await tx.update(journals).set({ status: 'REVERSED' }).where(eq(journals.transactionId, transactionId));
 
       return { revTx, revJournal };
     });
@@ -588,17 +1045,15 @@ export async function reverseTransaction(transactionId: number, reason: string, 
       'REVERSE',
       'TRANSACTION',
       String(transactionId),
-      `Koreksi/Pembalikan transaksi #${transactionId} dengan jurnal pembalik ${result.revJournal.journalNumber}. Alasan: ${reason}`
+      `Reversal transaksi #${transactionId} (${result.revJournal.journalNumber}): ${reason}`
     );
 
     return result;
-  } catch (error: any) {
-    console.error('Error reversing transaction:', error);
-    throw new Error(error.message || 'Gagal membatalkan transaksi', { cause: error });
-  }
+  });
 }
 
-// Query Transactions with filtering
+// ---------------- QUERY TRANSACTIONS ----------------
+
 export async function getTransactions(filter?: {
   status?: string;
   type?: string;
@@ -607,7 +1062,7 @@ export async function getTransactions(filter?: {
   startDate?: string;
   endDate?: string;
 }) {
-  try {
+  return await executeWithRetry(async () => {
     const conditions = [];
 
     if (filter?.status) {
@@ -640,11 +1095,21 @@ export async function getTransactions(filter?: {
         unitId: transactions.unitId,
         fundId: transactions.fundId,
         description: transactions.description,
+        recipient: transactions.recipient,
         reference: transactions.reference,
+        attachmentUrl: transactions.attachmentUrl,
         totalAmount: transactions.totalAmount,
         status: transactions.status,
+        cashBankType: transactions.cashBankType,
+        cashAccountId: transactions.cashAccountId,
+        bankAccountId: transactions.bankAccountId,
+        toCashBankType: transactions.toCashBankType,
+        toCashAccountId: transactions.toCashAccountId,
+        toBankAccountId: transactions.toBankAccountId,
         reversalOfId: transactions.reversalOfId,
         createdById: transactions.createdById,
+        approvedById: transactions.approvedById,
+        approvedAt: transactions.approvedAt,
         postedById: transactions.postedById,
         postedAt: transactions.postedAt,
         createdAt: transactions.createdAt,
@@ -661,14 +1126,11 @@ export async function getTransactions(filter?: {
       .orderBy(desc(transactions.date), desc(transactions.id));
 
     return res;
-  } catch (error) {
-    console.error('Error fetching transactions:', error);
-    throw new Error('Gagal mengambil data transaksi', { cause: error });
-  }
+  });
 }
 
 export async function getTransactionDetails(id: number) {
-  try {
+  return await executeWithRetry(async () => {
     const [trx] = await db
       .select({
         id: transactions.id,
@@ -678,11 +1140,21 @@ export async function getTransactionDetails(id: number) {
         unitId: transactions.unitId,
         fundId: transactions.fundId,
         description: transactions.description,
+        recipient: transactions.recipient,
         reference: transactions.reference,
+        attachmentUrl: transactions.attachmentUrl,
         totalAmount: transactions.totalAmount,
         status: transactions.status,
+        cashBankType: transactions.cashBankType,
+        cashAccountId: transactions.cashAccountId,
+        bankAccountId: transactions.bankAccountId,
+        toCashBankType: transactions.toCashBankType,
+        toCashAccountId: transactions.toCashAccountId,
+        toBankAccountId: transactions.toBankAccountId,
         reversalOfId: transactions.reversalOfId,
         createdById: transactions.createdById,
+        approvedById: transactions.approvedById,
+        approvedAt: transactions.approvedAt,
         postedById: transactions.postedById,
         postedAt: transactions.postedAt,
         createdAt: transactions.createdAt,
@@ -716,18 +1188,243 @@ export async function getTransactionDetails(id: number) {
       .orderBy(transactionLines.lineNumber);
 
     return { ...trx, lines };
-  } catch (error) {
-    console.error('Error fetching transaction details:', error);
-    throw new Error('Gagal mengambil detail transaksi', { cause: error });
-  }
+  });
 }
 
-// ---------------- JOURNALS & GENERAL LEDGER (BUKU BESAR) ----------------
+// ---------------- BUKU KAS (CASH BOOK) ----------------
+export async function getCashBook(
+  cashAccountId: number,
+  startDate?: string,
+  endDate?: string,
+  unitId?: number,
+  fundId?: number
+) {
+  return await executeWithRetry(async () => {
+    const [cash] = await db.select().from(cashAccounts).where(eq(cashAccounts.id, cashAccountId));
+    if (!cash) throw new Error('Kas tunai tidak ditemukan');
+
+    // Initial opening balance: cash.initialBalance plus posted journals prior to startDate
+    let openingBal = Number(cash.initialBalance);
+
+    if (startDate) {
+      const priorConditions = [
+        eq(journalLines.accountId, cash.accountId),
+        sql`journals.date < ${startDate}`,
+      ];
+      if (unitId) priorConditions.push(eq(journalLines.unitId, unitId));
+      if (fundId) priorConditions.push(eq(journalLines.fundId, fundId));
+
+      const priorLines = await db
+        .select({
+          totalDebit: sql<string>`coalesce(sum(journal_lines.debit), 0)`,
+          totalCredit: sql<string>`coalesce(sum(journal_lines.credit), 0)`,
+        })
+        .from(journalLines)
+        .innerJoin(journals, and(eq(journalLines.journalId, journals.id), eq(journals.status, 'POSTED')))
+        .where(and(...priorConditions));
+
+      const d = Number(priorLines[0]?.totalDebit || 0);
+      const c = Number(priorLines[0]?.totalCredit || 0);
+      openingBal += d - c;
+    }
+
+    const conditions = [
+      eq(journalLines.accountId, cash.accountId),
+      eq(journals.status, 'POSTED'),
+    ];
+    if (startDate) conditions.push(gte(journals.date, startDate));
+    if (endDate) conditions.push(lte(journals.date, endDate));
+    if (unitId) conditions.push(eq(journalLines.unitId, unitId));
+    if (fundId) conditions.push(eq(journalLines.fundId, fundId));
+
+    const lines = await db
+      .select({
+        id: journalLines.id,
+        date: journals.date,
+        journalNumber: journals.journalNumber,
+        description: journalLines.description,
+        debit: journalLines.debit,
+        credit: journalLines.credit,
+        unitName: units.name,
+        fundName: funds.name,
+      })
+      .from(journalLines)
+      .innerJoin(journals, eq(journalLines.journalId, journals.id))
+      .leftJoin(units, eq(journalLines.unitId, units.id))
+      .leftJoin(funds, eq(journalLines.fundId, funds.id))
+      .where(and(...conditions))
+      .orderBy(journals.date, journals.id, journalLines.lineNumber);
+
+    let cur = openingBal;
+    let totalMasuk = 0;
+    let totalKeluar = 0;
+
+    const entries = lines.map((l) => {
+      const masuk = Number(l.debit);
+      const keluar = Number(l.credit);
+      cur += masuk - keluar;
+      totalMasuk += masuk;
+      totalKeluar += keluar;
+      return {
+        id: l.id,
+        date: l.date,
+        transactionNumber: l.journalNumber,
+        description: l.description || '-',
+        penerimaan: masuk,
+        pengeluaran: keluar,
+        runningBalance: cur,
+        unitName: l.unitName,
+        fundName: l.fundName,
+      };
+    });
+
+    return {
+      cashAccount: cash,
+      openingBalance: openingBal,
+      totalPenerimaan: totalMasuk,
+      totalPengeluaran: totalKeluar,
+      endingBalance: cur,
+      entries,
+    };
+  });
+}
+
+// ---------------- BUKU BANK (BANK BOOK) ----------------
+export async function getBankBook(
+  bankAccountId: number,
+  startDate?: string,
+  endDate?: string,
+  unitId?: number,
+  fundId?: number
+) {
+  return await executeWithRetry(async () => {
+    const [bank] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, bankAccountId));
+    if (!bank) throw new Error('Rekening bank tidak ditemukan');
+
+    let openingBal = Number(bank.initialBalance);
+
+    if (startDate) {
+      const priorConditions = [
+        eq(journalLines.accountId, bank.accountId),
+        sql`journals.date < ${startDate}`,
+      ];
+      if (unitId) priorConditions.push(eq(journalLines.unitId, unitId));
+      if (fundId) priorConditions.push(eq(journalLines.fundId, fundId));
+
+      const priorLines = await db
+        .select({
+          totalDebit: sql<string>`coalesce(sum(journal_lines.debit), 0)`,
+          totalCredit: sql<string>`coalesce(sum(journal_lines.credit), 0)`,
+        })
+        .from(journalLines)
+        .innerJoin(journals, and(eq(journalLines.journalId, journals.id), eq(journals.status, 'POSTED')))
+        .where(and(...priorConditions));
+
+      const d = Number(priorLines[0]?.totalDebit || 0);
+      const c = Number(priorLines[0]?.totalCredit || 0);
+      openingBal += d - c;
+    }
+
+    const conditions = [
+      eq(journalLines.accountId, bank.accountId),
+      eq(journals.status, 'POSTED'),
+    ];
+    if (startDate) conditions.push(gte(journals.date, startDate));
+    if (endDate) conditions.push(lte(journals.date, endDate));
+    if (unitId) conditions.push(eq(journalLines.unitId, unitId));
+    if (fundId) conditions.push(eq(journalLines.fundId, fundId));
+
+    const lines = await db
+      .select({
+        id: journalLines.id,
+        date: journals.date,
+        journalNumber: journals.journalNumber,
+        trxType: transactions.type,
+        description: journalLines.description,
+        debit: journalLines.debit,
+        credit: journalLines.credit,
+        unitName: units.name,
+        fundName: funds.name,
+      })
+      .from(journalLines)
+      .innerJoin(journals, eq(journalLines.journalId, journals.id))
+      .leftJoin(transactions, eq(journals.transactionId, transactions.id))
+      .leftJoin(units, eq(journalLines.unitId, units.id))
+      .leftJoin(funds, eq(journalLines.fundId, funds.id))
+      .where(and(...conditions))
+      .orderBy(journals.date, journals.id, journalLines.lineNumber);
+
+    let cur = openingBal;
+    let totalPenerimaan = 0;
+    let totalPengeluaran = 0;
+    let totalTransferIn = 0;
+    let totalTransferOut = 0;
+
+    const entries = lines.map((l) => {
+      const d = Number(l.debit);
+      const c = Number(l.credit);
+      const isTransfer = l.trxType === 'TRANSFER' || l.trxType === 'MUTASI_KAS_BANK';
+
+      let pen = 0;
+      let peng = 0;
+      let trIn = 0;
+      let trOut = 0;
+
+      if (d > 0) {
+        if (isTransfer) {
+          trIn = d;
+          totalTransferIn += d;
+        } else {
+          pen = d;
+          totalPenerimaan += d;
+        }
+        cur += d;
+      } else if (c > 0) {
+        if (isTransfer) {
+          trOut = c;
+          totalTransferOut += c;
+        } else {
+          peng = c;
+          totalPengeluaran += c;
+        }
+        cur -= c;
+      }
+
+      return {
+        id: l.id,
+        date: l.date,
+        transactionNumber: l.journalNumber,
+        type: l.trxType || 'JURNAL',
+        description: l.description || '-',
+        penerimaan: pen,
+        pengeluaran: peng,
+        transferIn: trIn,
+        transferOut: trOut,
+        runningBalance: cur,
+        unitName: l.unitName,
+        fundName: l.fundName,
+      };
+    });
+
+    return {
+      bankAccount: bank,
+      openingBalance: openingBal,
+      totalPenerimaan,
+      totalPengeluaran,
+      totalTransferIn,
+      totalTransferOut,
+      endingBalance: cur,
+      entries,
+    };
+  });
+}
+
+// ---------------- JOURNALS & GENERAL LEDGER ----------------
 export async function getJournals(filter?: {
   startDate?: string;
   endDate?: string;
 }) {
-  try {
+  return await executeWithRetry(async () => {
     const conditions = [];
     if (filter?.startDate) conditions.push(gte(journals.date, filter.startDate));
     if (filter?.endDate) conditions.push(lte(journals.date, filter.endDate));
@@ -741,6 +1438,7 @@ export async function getJournals(filter?: {
         transactionId: journals.transactionId,
         date: journals.date,
         description: journals.description,
+        attachmentUrl: journals.attachmentUrl,
         totalDebit: journals.totalDebit,
         totalCredit: journals.totalCredit,
         isBalanced: journals.isBalanced,
@@ -753,7 +1451,6 @@ export async function getJournals(filter?: {
       .where(whereClause)
       .orderBy(desc(journals.date), desc(journals.id));
 
-    // Fetch lines for these journals
     const allLines = await db
       .select({
         id: journalLines.id,
@@ -776,7 +1473,6 @@ export async function getJournals(filter?: {
       .leftJoin(funds, eq(journalLines.fundId, funds.id))
       .orderBy(journalLines.journalId, journalLines.lineNumber);
 
-    // Group lines by journalId
     const linesByJournalId = new Map<number, any[]>();
     for (const line of allLines) {
       const arr = linesByJournalId.get(line.journalId) || [];
@@ -788,34 +1484,28 @@ export async function getJournals(filter?: {
       ...j,
       lines: linesByJournalId.get(j.id) || [],
     }));
-  } catch (error) {
-    console.error('Error fetching journals:', error);
-    throw new Error('Gagal mengambil daftar jurnal umum', { cause: error });
-  }
+  });
 }
 
-// Buku Besar (General Ledger) for a specific account
 export async function getGeneralLedger(accountId: number, startDate?: string, endDate?: string) {
-  try {
+  return await executeWithRetry(async () => {
     const [acc] = await db.select().from(accounts).where(eq(accounts.id, accountId));
     if (!acc) throw new Error('Akun tidak ditemukan');
 
-    // Calculate opening balance before startDate
     let openingDebit = 0;
     let openingCredit = 0;
 
     if (startDate) {
       const priorLines = await db
         .select({
-          totalDebit: sql<string>`sum(journal_lines.debit)`,
-          totalCredit: sql<string>`sum(journal_lines.credit)`,
+          totalDebit: sql<string>`coalesce(sum(journal_lines.debit), 0)`,
+          totalCredit: sql<string>`coalesce(sum(journal_lines.credit), 0)`,
         })
         .from(journalLines)
-        .innerJoin(journals, eq(journalLines.journalId, journals.id))
+        .innerJoin(journals, and(eq(journalLines.journalId, journals.id), eq(journals.status, 'POSTED')))
         .where(
           and(
             eq(journalLines.accountId, accountId),
-            eq(journals.status, 'POSTED'),
             sql`journals.date < ${startDate}`
           )
         );
@@ -829,7 +1519,6 @@ export async function getGeneralLedger(accountId: number, startDate?: string, en
         ? openingDebit - openingCredit
         : openingCredit - openingDebit;
 
-    // Fetch entries in period
     const conditions = [
       eq(journalLines.accountId, accountId),
       eq(journals.status, 'POSTED'),
@@ -855,7 +1544,6 @@ export async function getGeneralLedger(accountId: number, startDate?: string, en
       .where(and(...conditions))
       .orderBy(journals.date, journals.id, journalLines.lineNumber);
 
-    // Compute running balance
     let currentBalance = openingBalance;
     const entriesWithBalance = entries.map((entry) => {
       const d = Number(entry.debit);
@@ -877,30 +1565,64 @@ export async function getGeneralLedger(accountId: number, startDate?: string, en
       entries: entriesWithBalance,
       endingBalance: currentBalance,
     };
-  } catch (error) {
-    console.error('Error fetching general ledger:', error);
-    throw new Error('Gagal mengambil Buku Besar', { cause: error });
-  }
+  });
 }
 
-// ---------------- DASHBOARD METRICS ----------------
-export async function getDashboardMetrics() {
-  try {
-    // 1. Saldo Kas
+// ---------------- DASHBOARD METRICS WITH FILTERS ----------------
+
+export async function getDashboardMetrics(filter?: {
+  month?: number;
+  year?: number;
+  unitId?: number;
+  fundId?: number;
+}) {
+  return await executeWithRetry(async () => {
+    // 1. Saldo Kas Tunai
     const cashRes = await db
       .select({ total: sql<string>`coalesce(sum(current_balance), 0)` })
       .from(cashAccounts)
       .where(eq(cashAccounts.isActive, true));
     const saldoKas = Number(cashRes[0]?.total || 0);
 
-    // 2. Saldo Bank
-    const bankRes = await db
-      .select({ total: sql<string>`coalesce(sum(current_balance), 0)` })
+    // 2. Saldo masing-masing bank
+    const banks = await db
+      .select({
+        id: bankAccounts.id,
+        bankName: bankAccounts.bankName,
+        accountNumber: bankAccounts.accountNumber,
+        balance: sql<number>`current_balance::numeric`,
+      })
       .from(bankAccounts)
-      .where(eq(bankAccounts.isActive, true));
-    const saldoBank = Number(bankRes[0]?.total || 0);
+      .where(eq(bankAccounts.isActive, true))
+      .orderBy(bankAccounts.id);
 
-    // 3. Total Aset, Pendapatan, Beban from journal_lines of POSTED journals
+    const saldoBank = banks.reduce((sum, b) => sum + Number(b.balance), 0);
+    const totalKasBank = saldoKas + saldoBank;
+
+    // 3. Pendapatan & Beban with date/unit/fund filters
+    const journalConditions = [eq(journals.status, 'POSTED')];
+
+    if (filter?.year) {
+      journalConditions.push(sql`EXTRACT(YEAR FROM journals.date) = ${filter.year}`);
+    } else {
+      const curYear = new Date().getFullYear();
+      journalConditions.push(sql`EXTRACT(YEAR FROM journals.date) = ${curYear}`);
+    }
+
+    if (filter?.month) {
+      journalConditions.push(sql`EXTRACT(MONTH FROM journals.date) = ${filter.month}`);
+    }
+
+    const lineConditions = [];
+    if (filter?.unitId) {
+      lineConditions.push(eq(journalLines.unitId, filter.unitId));
+    }
+    if (filter?.fundId) {
+      lineConditions.push(eq(journalLines.fundId, filter.fundId));
+    }
+
+    const whereClause = and(...journalConditions, ...lineConditions);
+
     const categoryTotals = await db
       .select({
         category: accounts.category,
@@ -908,8 +1630,9 @@ export async function getDashboardMetrics() {
         totalCredit: sql<string>`coalesce(sum(journal_lines.credit), 0)`,
       })
       .from(journalLines)
-      .innerJoin(journals, and(eq(journalLines.journalId, journals.id), eq(journals.status, 'POSTED')))
+      .innerJoin(journals, eq(journalLines.journalId, journals.id))
       .innerJoin(accounts, eq(journalLines.accountId, accounts.id))
+      .where(whereClause)
       .groupBy(accounts.category);
 
     let totalPendapatan = 0;
@@ -928,12 +1651,14 @@ export async function getDashboardMetrics() {
       }
     }
 
-    // Total Aset combines active cash, active bank, plus fixed assets or journal balances
-    // Ensure totalAset is at least cash + bank
-    const totalAset = Math.max(saldoKas + saldoBank, saldoKas + saldoBank + totalAsetJurnal);
+    const totalAset = Math.max(totalKasBank, totalKasBank + totalAsetJurnal);
     const surplusDefisit = totalPendapatan - totalBeban;
 
-    // 4. Recent transactions
+    // 4. 10 Transaksi Terakhir
+    const trxConditions = [];
+    if (filter?.unitId) trxConditions.push(eq(transactions.unitId, filter.unitId));
+    if (filter?.fundId) trxConditions.push(eq(transactions.fundId, filter.fundId));
+
     const recentTransactions = await db
       .select({
         id: transactions.id,
@@ -949,10 +1674,10 @@ export async function getDashboardMetrics() {
       .from(transactions)
       .leftJoin(units, eq(transactions.unitId, units.id))
       .leftJoin(funds, eq(transactions.fundId, funds.id))
+      .where(trxConditions.length > 0 ? and(...trxConditions) : undefined)
       .orderBy(desc(transactions.date), desc(transactions.id))
-      .limit(6);
+      .limit(10);
 
-    // 5. Total Units and Funds count
     const [unitsCount] = await db.select({ count: sql<number>`count(*)` }).from(units);
     const [fundsCount] = await db.select({ count: sql<number>`count(*)` }).from(funds);
     const [accountsCount] = await db.select({ count: sql<number>`count(*)` }).from(accounts);
@@ -960,6 +1685,8 @@ export async function getDashboardMetrics() {
     return {
       saldoKas,
       saldoBank,
+      totalKasBank,
+      bankBalances: banks,
       totalAset,
       pendapatan: totalPendapatan,
       beban: totalBeban,
@@ -971,15 +1698,12 @@ export async function getDashboardMetrics() {
         accounts: Number(accountsCount?.count || 0),
       },
     };
-  } catch (error) {
-    console.error('Error fetching dashboard metrics:', error);
-    throw new Error('Gagal mengambil metrik dashboard', { cause: error });
-  }
+  });
 }
 
 // ---------------- AUDIT LOGS ----------------
 export async function getAuditLogs(limit: number = 100) {
-  try {
+  return await executeWithRetry(async () => {
     return await db
       .select({
         id: auditLogs.id,
@@ -997,8 +1721,220 @@ export async function getAuditLogs(limit: number = 100) {
       .leftJoin(users, eq(auditLogs.userId, users.id))
       .orderBy(desc(auditLogs.createdAt))
       .limit(limit);
-  } catch (error) {
-    console.error('Error fetching audit logs:', error);
-    throw new Error('Gagal mengambil riwayat audit', { cause: error });
-  }
+  });
+}
+
+// ---------------- PHASE 2 AUTOMATED TEST RUNNER ----------------
+
+export async function runPhase2AutomatedTests(user: any) {
+  return await executeWithRetry(async () => {
+    const results: any[] = [];
+    const today = new Date().toISOString().split('T')[0];
+
+    // Find Bank A and Bank B
+    const allBanks = await db.select().from(bankAccounts).orderBy(bankAccounts.id);
+    if (allBanks.length < 2) {
+      throw new Error('Pengujian membutuhkan minimal 2 rekening bank (Bank A dan Bank B).');
+    }
+    const bankA = allBanks[0];
+    const bankB = allBanks[1];
+
+    // Find Income account (e.g. Infak 4220 or Donasi 4210)
+    const incomeAcc = (await db.select().from(accounts).where(eq(accounts.category, 'PENDAPATAN')))[0];
+    // Find Expense account (e.g. Beban Makan/Dapur 5210 or Listrik 5220)
+    const expenseAcc = (await db.select().from(accounts).where(eq(accounts.category, 'BEBAN')))[0];
+
+    // ==========================================
+    // TEST 1: Penerimaan Rp10.000.000 via Bank A
+    // ==========================================
+    try {
+      const prevBalA = Number(bankA.currentBalance);
+      const trx1 = await createPenerimaan(
+        {
+          date: today,
+          incomeAccountId: incomeAcc.id,
+          cashBankType: 'BANK',
+          cashBankId: bankA.id,
+          amount: 10000000,
+          description: '[TEST 1] Penerimaan Donasi Bank A',
+          status: 'POSTED',
+        },
+        user
+      );
+
+      const [updatedBankA] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, bankA.id));
+      const newBalA = Number(updatedBankA.currentBalance);
+      const balanceDiff = newBalA - prevBalA;
+
+      const [jrn1] = await db.select().from(journals).where(eq(journals.transactionId, trx1.id));
+      const jrnLines1 = await db.select().from(journalLines).where(eq(journalLines.journalId, jrn1.id));
+
+      const debitLine = jrnLines1.find((l) => Number(l.debit) === 10000000);
+      const creditLine = jrnLines1.find((l) => Number(l.credit) === 10000000);
+
+      const pass1 =
+        Math.abs(balanceDiff - 10000000) < 0.01 &&
+        debitLine?.accountId === bankA.accountId &&
+        creditLine?.accountId === incomeAcc.id;
+
+      results.push({
+        id: 'TEST_1',
+        title: 'Penerimaan Rp10.000.000 melalui Bank A',
+        passed: pass1,
+        message: pass1
+          ? `Lolos: Saldo Bank A bertambah Rp10.000.000, Jurnal Debit Bank A (Rp 10.000.000) & Kredit Pendapatan (Rp 10.000.000) berhasil diposting.`
+          : `Gagal: Saldo selisih ${balanceDiff}, Debit ${debitLine?.debit}, Kredit ${creditLine?.credit}`,
+        details: { trxNumber: trx1.transactionNumber, journalNumber: jrn1.journalNumber, newBalA },
+      });
+    } catch (e: any) {
+      results.push({ id: 'TEST_1', title: 'Penerimaan Rp10.000.000 melalui Bank A', passed: false, message: e.message });
+    }
+
+    // ==========================================
+    // TEST 2: Pengeluaran Rp3.000.000 dari Bank A
+    // ==========================================
+    try {
+      const [bankACurrent] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, bankA.id));
+      const prevBalA2 = Number(bankACurrent.currentBalance);
+
+      const trx2 = await createPengeluaran(
+        {
+          date: today,
+          expenseAccountId: expenseAcc.id,
+          cashBankType: 'BANK',
+          cashBankId: bankA.id,
+          recipient: 'Penyedia Bahan Pesantren',
+          amount: 3000000,
+          description: '[TEST 2] Pengeluaran Operasional Bank A',
+          status: 'POSTED',
+        },
+        user
+      );
+
+      const [updatedBankA2] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, bankA.id));
+      const newBalA2 = Number(updatedBankA2.currentBalance);
+      const balanceDiff2 = prevBalA2 - newBalA2;
+
+      const [jrn2] = await db.select().from(journals).where(eq(journals.transactionId, trx2.id));
+      const jrnLines2 = await db.select().from(journalLines).where(eq(journalLines.journalId, jrn2.id));
+
+      const debitLine2 = jrnLines2.find((l) => Number(l.debit) === 3000000);
+      const creditLine2 = jrnLines2.find((l) => Number(l.credit) === 3000000);
+
+      const pass2 =
+        Math.abs(balanceDiff2 - 3000000) < 0.01 &&
+        debitLine2?.accountId === expenseAcc.id &&
+        creditLine2?.accountId === bankA.accountId;
+
+      results.push({
+        id: 'TEST_2',
+        title: 'Pengeluaran Rp3.000.000 dari Bank A',
+        passed: pass2,
+        message: pass2
+          ? `Lolos: Saldo Bank A berkurang Rp3.000.000, Jurnal Debit Beban (Rp 3.000.000) & Kredit Bank A (Rp 3.000.000) berhasil diposting.`
+          : `Gagal: Saldo selisih ${balanceDiff2}, Debit ${debitLine2?.debit}, Kredit ${creditLine2?.credit}`,
+        details: { trxNumber: trx2.transactionNumber, journalNumber: jrn2.journalNumber, newBalA2 },
+      });
+    } catch (e: any) {
+      results.push({ id: 'TEST_2', title: 'Pengeluaran Rp3.000.000 dari Bank A', passed: false, message: e.message });
+    }
+
+    // ==========================================
+    // TEST 3: Transfer Rp2.000.000 dari Bank A ke Bank B
+    // ==========================================
+    try {
+      const [bankACur3] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, bankA.id));
+      const [bankBCur3] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, bankB.id));
+      const prevA3 = Number(bankACur3.currentBalance);
+      const prevB3 = Number(bankBCur3.currentBalance);
+
+      const trx3 = await createTransfer(
+        {
+          date: today,
+          fromType: 'BANK',
+          fromId: bankA.id,
+          toType: 'BANK',
+          toId: bankB.id,
+          amount: 2000000,
+          description: '[TEST 3] Transfer Antar Bank A ke Bank B',
+          status: 'POSTED',
+        },
+        user
+      );
+
+      const [upA3] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, bankA.id));
+      const [upB3] = await db.select().from(bankAccounts).where(eq(bankAccounts.id, bankB.id));
+      const newA3 = Number(upA3.currentBalance);
+      const newB3 = Number(upB3.currentBalance);
+
+      const [jrn3] = await db.select().from(journals).where(eq(journals.transactionId, trx3.id));
+      const jrnLines3 = await db.select().from(journalLines).where(eq(journalLines.journalId, jrn3.id));
+
+      const accMap = new Map((await db.select().from(accounts)).map((a) => [a.id, a]));
+      let hasRevenueOrExpense = false;
+      for (const l of jrnLines3) {
+        const cat = accMap.get(l.accountId)?.category;
+        if (cat === 'PENDAPATAN' || cat === 'BEBAN') {
+          hasRevenueOrExpense = true;
+        }
+      }
+
+      const pass3 =
+        Math.abs(prevA3 - newA3 - 2000000) < 0.01 &&
+        Math.abs(newB3 - prevB3 - 2000000) < 0.01 &&
+        !hasRevenueOrExpense;
+
+      results.push({
+        id: 'TEST_3',
+        title: 'Transfer Rp2.000.000 dari Bank A ke Bank B',
+        passed: pass3,
+        message: pass3
+          ? `Lolos: Bank A berkurang Rp2.000.000, Bank B bertambah Rp2.000.000, dan jurnal transfer murni mutasi aset tanpa menyentuh Pendapatan atau Beban.`
+          : `Gagal: Selisih Bank A ${prevA3 - newA3}, Selisih Bank B ${newB3 - prevB3}, Menyentuh Pendapatan/Beban: ${hasRevenueOrExpense}`,
+        details: { trxNumber: trx3.transactionNumber, journalNumber: jrn3.journalNumber, newA3, newB3 },
+      });
+    } catch (e: any) {
+      results.push({ id: 'TEST_3', title: 'Transfer Rp2.000.000 dari Bank A ke Bank B', passed: false, message: e.message });
+    }
+
+    // ==========================================
+    // TEST 4: Penolakan Jurnal Tidak Seimbang (Debit Rp5jt, Kredit Rp4jt)
+    // ==========================================
+    try {
+      let rejected = false;
+      let rejectMsg = '';
+
+      try {
+        await createJurnalUmum(
+          {
+            date: today,
+            description: '[TEST 4] Percobaan Jurnal Tidak Balance',
+            status: 'POSTED',
+            lines: [
+              { accountId: bankA.accountId, debit: 5000000, credit: 0 },
+              { accountId: incomeAcc.id, debit: 0, credit: 4000000 },
+            ],
+          },
+          user
+        );
+      } catch (err: any) {
+        rejected = true;
+        rejectMsg = err.message;
+      }
+
+      results.push({
+        id: 'TEST_4',
+        title: 'Validasi Penolakan Jurnal Tidak Seimbang (Debit Rp5.000.000 vs Kredit Rp4.000.000)',
+        passed: rejected,
+        message: rejected
+          ? `Lolos: Sistem berhasil mendeteksi dan secara ketat MENOLAK posting jurnal yang tidak seimbang. Pesan sistem: "${rejectMsg}".`
+          : `Gagal: Sistem secara keliru mengizinkan posting jurnal yang tidak seimbang!`,
+        details: { rejected, rejectMsg },
+      });
+    } catch (e: any) {
+      results.push({ id: 'TEST_4', title: 'Validasi Penolakan Jurnal Tidak Seimbang', passed: false, message: e.message });
+    }
+
+    return results;
+  });
 }

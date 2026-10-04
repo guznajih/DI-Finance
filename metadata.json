@@ -2,5 +2,7 @@
   "name": "Darul Istiqomah Finance",
   "description": "Sistem Manajemen Keuangan dan Akuntansi Pesantren Darul Istiqomah Bojonegoro",
   "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

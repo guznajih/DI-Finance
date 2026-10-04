@@ -109,15 +109,25 @@ export const transactions = pgTable('transactions', {
   id: serial('id').primaryKey(),
   transactionNumber: varchar('transaction_number', { length: 50 }).notNull().unique(),
   date: date('date').notNull(),
-  type: varchar('type', { length: 30 }).notNull(), // PENERIMAAN, PENGELUARAN, MUTASI_KAS_BANK, PENYESUAIAN
+  type: varchar('type', { length: 30 }).notNull(), // PENERIMAAN, PENGELUARAN, TRANSFER, JURNAL_UMUM, MUTASI_KAS_BANK, PENYESUAIAN
   unitId: integer('unit_id').references(() => units.id),
   fundId: integer('fund_id').references(() => funds.id),
   description: text('description').notNull(),
+  recipient: varchar('recipient', { length: 150 }), // Penerima dana (pengeluaran)
   reference: text('reference'), // bukti kwitansi / invoice
+  attachmentUrl: text('attachment_url'), // file attachment / proof
   totalAmount: numeric('total_amount', { precision: 15, scale: 2 }).notNull(),
-  status: varchar('status', { length: 20 }).default('DRAFT').notNull(), // DRAFT, POSTED, REVERSED
+  status: varchar('status', { length: 20 }).default('DRAFT').notNull(), // DRAFT, DIAJUKAN, DISETUJUI, POSTED, REVERSED, VOID
+  cashBankType: varchar('cash_bank_type', { length: 20 }), // KAS, BANK
+  cashAccountId: integer('cash_account_id').references(() => cashAccounts.id),
+  bankAccountId: integer('bank_account_id').references(() => bankAccounts.id),
+  toCashBankType: varchar('to_cash_bank_type', { length: 20 }), // for TRANSFER
+  toCashAccountId: integer('to_cash_account_id').references(() => cashAccounts.id),
+  toBankAccountId: integer('to_bank_account_id').references(() => bankAccounts.id),
   reversalOfId: integer('reversal_of_id'),
   createdById: integer('created_by_id').references(() => users.id),
+  approvedById: integer('approved_by_id').references(() => users.id),
+  approvedAt: timestamp('approved_at'),
   postedById: integer('posted_by_id').references(() => users.id),
   postedAt: timestamp('posted_at'),
   createdAt: timestamp('created_at').defaultNow(),
@@ -145,6 +155,7 @@ export const journals = pgTable('journals', {
   transactionId: integer('transaction_id').references(() => transactions.id),
   date: date('date').notNull(),
   description: text('description').notNull(),
+  attachmentUrl: text('attachment_url'),
   totalDebit: numeric('total_debit', { precision: 15, scale: 2 }).notNull(),
   totalCredit: numeric('total_credit', { precision: 15, scale: 2 }).notNull(),
   isBalanced: boolean('is_balanced').default(true).notNull(),

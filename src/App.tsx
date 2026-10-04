@@ -1,15 +1,21 @@
 import React, { useState } from 'react';
 import { AccountsView } from './components/AccountsView.tsx';
 import { AuditTrailView } from './components/AuditTrailView.tsx';
+import { BankBookView } from './components/BankBookView.tsx';
 import { CashBankView } from './components/CashBankView.tsx';
+import { CashBookView } from './components/CashBookView.tsx';
 import { DashboardView } from './components/DashboardView.tsx';
 import { FundsView } from './components/FundsView.tsx';
 import { GeneralLedgerView } from './components/GeneralLedgerView.tsx';
 import { JournalsView } from './components/JournalsView.tsx';
 import { Navbar } from './components/Navbar.tsx';
+import { PenerimaanView } from './components/PenerimaanView.tsx';
+import { PengeluaranView } from './components/PengeluaranView.tsx';
 import { ReportsView } from './components/ReportsView.tsx';
 import { Sidebar, ViewType } from './components/Sidebar.tsx';
+import { TestingView } from './components/TestingView.tsx';
 import { TransactionsView } from './components/TransactionsView.tsx';
+import { TransferView } from './components/TransferView.tsx';
 import { UnitsView } from './components/UnitsView.tsx';
 import { UsersView } from './components/UsersView.tsx';
 import { AuthProvider } from './context/AuthContext.tsx';
@@ -48,21 +54,32 @@ function MainLayout() {
                 openNewTransactionModal={handleOpenNewTransaction}
               />
             )}
-            {currentView === 'units' && <UnitsView />}
-            {currentView === 'funds' && <FundsView />}
-            {currentView === 'accounts' && <AccountsView />}
-            {currentView === 'cash-bank' && <CashBankView />}
+            {/* KEUANGAN (FASE 2) */}
+            {currentView === 'penerimaan' && <PenerimaanView />}
+            {currentView === 'pengeluaran' && <PengeluaranView />}
+            {currentView === 'transfer' && <TransferView />}
+            {currentView === 'journals' && <JournalsView />}
+            {currentView === 'cash-book' && <CashBookView />}
+            {currentView === 'bank-book' && <BankBookView />}
+            {currentView === 'ledger' && <GeneralLedgerView />}
             {currentView === 'transactions' && (
               <TransactionsView
                 modalOpen={newTrxModalOpen}
                 setModalOpen={setNewTrxModalOpen}
               />
             )}
-            {currentView === 'journals' && <JournalsView />}
-            {currentView === 'ledger' && <GeneralLedgerView />}
+            {currentView === 'testing' && <TestingView />}
+
+            {/* MASTER DATA */}
+            {currentView === 'units' && <UnitsView />}
+            {currentView === 'funds' && <FundsView />}
+            {currentView === 'accounts' && <AccountsView />}
+            {currentView === 'cash-bank' && <CashBankView />}
+            {currentView === 'users' && <UsersView />}
+
+            {/* LAPORAN & AUDIT */}
             {currentView === 'reports' && <ReportsView />}
             {currentView === 'audit-logs' && <AuditTrailView />}
-            {currentView === 'users' && <UsersView />}
           </div>
         </main>
       </div>

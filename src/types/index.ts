@@ -1,5 +1,15 @@
 export type RoleName = 'SUPER_ADMIN' | 'PIMPINAN' | 'BENDAHARA' | 'PETUGAS_KEUANGAN' | 'UNIT';
 
+export type TransactionStatus = 'DRAFT' | 'DIAJUKAN' | 'DISETUJUI' | 'POSTED' | 'REVERSED' | 'VOID';
+
+export type TransactionType =
+  | 'PENERIMAAN'
+  | 'PENGELUARAN'
+  | 'TRANSFER'
+  | 'JURNAL_UMUM'
+  | 'MUTASI_KAS_BANK'
+  | 'PENYESUAIAN';
+
 export interface User {
   id: number;
   uid: string;
@@ -88,15 +98,25 @@ export interface Transaction {
   id: number;
   transactionNumber: string;
   date: string;
-  type: 'PENERIMAAN' | 'PENGELUARAN' | 'MUTASI_KAS_BANK' | 'PENYESUAIAN';
+  type: TransactionType;
   unitId?: number | null;
   fundId?: number | null;
   description: string;
+  recipient?: string | null;
   reference?: string | null;
+  attachmentUrl?: string | null;
   totalAmount: string;
-  status: 'DRAFT' | 'POSTED' | 'REVERSED';
+  status: TransactionStatus;
+  cashBankType?: 'KAS' | 'BANK' | null;
+  cashAccountId?: number | null;
+  bankAccountId?: number | null;
+  toCashBankType?: 'KAS' | 'BANK' | null;
+  toCashAccountId?: number | null;
+  toBankAccountId?: number | null;
   reversalOfId?: number | null;
   createdById?: number;
+  approvedById?: number | null;
+  approvedAt?: string | null;
   postedById?: number | null;
   postedAt?: string | null;
   createdAt?: string;
@@ -104,6 +124,10 @@ export interface Transaction {
   unitCode?: string | null;
   fundName?: string | null;
   creatorName?: string | null;
+  approverName?: string | null;
+  posterName?: string | null;
+  sourceAccountName?: string | null;
+  targetAccountName?: string | null;
   lines?: TransactionLine[];
 }
 
@@ -129,6 +153,7 @@ export interface Journal {
   transactionId?: number | null;
   date: string;
   description: string;
+  attachmentUrl?: string | null;
   totalDebit: string;
   totalCredit: string;
   isBalanced: boolean;
@@ -157,9 +182,65 @@ export interface GeneralLedgerData {
   endingBalance: number;
 }
 
+export interface CashBookEntry {
+  id: number;
+  date: string;
+  transactionNumber: string;
+  description: string;
+  penerimaan: number;
+  pengeluaran: number;
+  runningBalance: number;
+  unitName?: string | null;
+  fundName?: string | null;
+  reference?: string | null;
+}
+
+export interface CashBookData {
+  cashAccount: CashAccount;
+  openingBalance: number;
+  totalPenerimaan: number;
+  totalPengeluaran: number;
+  endingBalance: number;
+  entries: CashBookEntry[];
+}
+
+export interface BankBookEntry {
+  id: number;
+  date: string;
+  transactionNumber: string;
+  type: string;
+  description: string;
+  penerimaan: number;
+  pengeluaran: number;
+  transferIn: number;
+  transferOut: number;
+  runningBalance: number;
+  unitName?: string | null;
+  fundName?: string | null;
+  reference?: string | null;
+}
+
+export interface BankBookData {
+  bankAccount: BankAccount;
+  openingBalance: number;
+  totalPenerimaan: number;
+  totalPengeluaran: number;
+  totalTransferIn: number;
+  totalTransferOut: number;
+  endingBalance: number;
+  entries: BankBookEntry[];
+}
+
 export interface DashboardMetrics {
   saldoKas: number;
   saldoBank: number;
+  totalKasBank: number;
+  bankBalances: Array<{
+    id: number;
+    bankName: string;
+    accountNumber: string;
+    balance: number;
+  }>;
   totalAset: number;
   pendapatan: number;
   beban: number;
@@ -193,4 +274,12 @@ export interface AuditLog {
   ipAddress?: string | null;
   createdAt: string;
   userName?: string | null;
+}
+
+export interface TestResultItem {
+  id: string;
+  title: string;
+  passed: boolean;
+  message: string;
+  details?: any;
 }
