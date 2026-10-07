@@ -268,8 +268,8 @@ export async function runComprehensiveAccountingIntegrityAudit(): Promise<Compre
       issues7.push({
         problemType: 'SELISIH_SALDO_BANK',
         recordId: bank.id,
-        details: `Rekening "${bank.bankName} - ${bank.accountNumber}": Saldo bank (Rp ${currentBal.toLocaleString('id-ID')}) != Buku Besar Akun #${bank.accountId} (Rp ${glEnding.toLocaleString('id-ID')}). Selisih: Rp ${diff.toLocaleString('id-ID')}`,
-        suggestedAction: 'Jalankan fitur Rekonsiliasi Bank untuk mencocokkan mutasi rekening koran dengan jurnal finance.',
+        details: `Rekening "${bank.bankName} - ${bank.accountNumber}": Saldo bank (Rp ${currentBal.toLocaleString('id-ID')}) != Buku Besar Akun #${bank.accountId} (Rp ${glEnding.toLocaleString('id-ID')}). Selisih: Rp ${diff.toLocaleString('id-ID')}. Status: UNRECONCILED.`,
+        suggestedAction: 'Item berstatus UNRECONCILED. Sesuai prinsip akuntansi syariah dan aturan audit Tahap 10A, sistem DILARANG melakukan AUTO-FIX saldo. Bendahara wajib menelusuri mutasi rekening koran fisik dan jika valid, mengajukan Jurnal Penyesuaian (Adjusting Journal Entry) resmi via Maker-Checker.',
       });
     }
   }

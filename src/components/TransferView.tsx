@@ -38,6 +38,7 @@ export const TransferView: React.FC = () => {
   const [toType, setToType] = useState<'KAS' | 'BANK'>('BANK');
   const [toId, setToId] = useState<number>(0);
   const [amount, setAmount] = useState<string>('');
+  const [adminFee, setAdminFee] = useState<string>('0');
   const [description, setDescription] = useState<string>('');
   const [reference, setReference] = useState<string>('');
   const [attachmentUrl, setAttachmentUrl] = useState<string>('');
@@ -91,6 +92,7 @@ export const TransferView: React.FC = () => {
     setFormError(null);
     setDate(new Date().toISOString().split('T')[0]);
     setAmount('');
+    setAdminFee('0');
     setDescription('');
     setReference('');
     setAttachmentUrl('');
@@ -129,12 +131,17 @@ export const TransferView: React.FC = () => {
     e.preventDefault();
     setFormError(null);
     const parsedAmount = parseFloat(amount);
+    const parsedAdminFee = parseFloat(adminFee) || 0;
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
       setFormError('Nominal transfer harus lebih besar dari 0');
       return;
     }
     if (fromType === toType && fromId === toId) {
       setFormError('Akun asal dan akun tujuan transfer tidak boleh sama!');
+      return;
+    }
+    if (parsedAdminFee < 0) {
+      setFormError('Biaya admin bank tidak boleh negatif');
       return;
     }
 
@@ -147,6 +154,7 @@ export const TransferView: React.FC = () => {
         toType,
         toId,
         amount: parsedAmount,
+        adminFee: parsedAdminFee,
         description: description || `Transfer internal ${fromType} ke ${toType}`,
         reference,
         attachmentUrl,
@@ -156,6 +164,7 @@ export const TransferView: React.FC = () => {
 
       const res = await authFetch('/api/transfer', {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
@@ -266,49 +275,63 @@ export const TransferView: React.FC = () => {
         <table className="w-full text-left text-xs">
           <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-600">
             <tr>
-              <th className="px-4 py-3.5">No. Transfer</th>
-              <th className="px-4 py-3.5">Tanggal</th>
-              <th className="px-4 py-3.5">Dari (Asal)</th>
-              <th className="px-4 py-3.5">Ke (Tujuan)</th>
-              <th className="px-4 py-3.5">Keterangan</th>
-              <th className="px-4 py-3.5 text-right">Nominal (Rp)</th>
-              <th className="px-4 py-3.5 text-center">Status</th>
-              <th className="px-4 py-3.5 text-center">Aksi</th>
+              <th className="px-3 py-3.5">No. Transfer</th>
+              <th className="px-3 py-3.5">Tanggal</th>
+              <th className="px-3 py-3.5">Dari (Asal)</th>
+              <th className="px-3 py-3.5">Ke (Tujuan)</th>
+              <th className="px-3 py-3.5">Keterangan</th>
+              <th className="px-3 py-3.5 text-right">Transfer (Rp)</th>
+              <th className="px-3 py-3.5 text-right">Biaya Admin</th>
+              <th className="px-3 py-3.5 text-right">Total Keluar</th>
+              <th className="px-3 py-3.5 text-center">Status</th>
+              <th className="px-3 py-3.5 text-center">Aksi</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
             {loading ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-gray-400">
+                <td colSpan={10} className="py-12 text-center text-gray-400">
                   Memuat data transfer...
                 </td>
               </tr>
             ) : transactions.length === 0 ? (
               <tr>
-                <td colSpan={8} className="py-12 text-center text-gray-400">
+                <td colSpan={10} className="py-12 text-center text-gray-400">
                   Belum ada transaksi transfer tercatat.
                 </td>
               </tr>
             ) : (
               transactions.map((trx) => (
                 <tr key={trx.id} className="hover:bg-gray-50/70">
-                  <td className="px-4 py-3 font-mono font-bold text-blue-900">
+                  <td className="px-3 py-3 font-mono font-bold text-blue-900">
                     {trx.transactionNumber}
                   </td>
-                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{trx.date}</td>
-                  <td className="px-4 py-3 font-semibold text-gray-800">
+                  <td className="px-3 py-3 text-gray-600 whitespace-nowrap">{trx.date}</td>
+                  <td className="px-3 py-3 font-semibold text-gray-800">
                     {trx.cashBankType === 'KAS' ? 'Kas Tunai' : 'Bank'}
                   </td>
-                  <td className="px-4 py-3 font-semibold text-emerald-800">
+                  <td className="px-3 py-3 font-semibold text-emerald-800">
                     {trx.toCashBankType === 'KAS' ? 'Kas Tunai' : 'Bank'}
                   </td>
-                  <td className="px-4 py-3 text-gray-700 max-w-xs truncate" title={trx.description}>
+                  <td className="px-3 py-3 text-gray-700 max-w-xs truncate" title={trx.description}>
                     {trx.description}
                   </td>
-                  <td className="px-4 py-3 text-right font-mono font-bold text-gray-900 whitespace-nowrap">
+                  <td className="px-3 py-3 text-right font-mono font-semibold text-gray-900 whitespace-nowrap">
+                    {formatRupiah(Number(trx.totalAmount) - (Number(trx.adminFee) || 0))}
+                  </td>
+                  <td className="px-3 py-3 text-right whitespace-nowrap">
+                    {Number(trx.adminFee) > 0 ? (
+                      <span className="rounded bg-amber-50 px-1.5 py-0.5 font-mono text-[10px] font-bold text-amber-800 border border-amber-200">
+                        {formatRupiah(trx.adminFee!)}
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 font-mono text-[10px]">Rp 0</span>
+                    )}
+                  </td>
+                  <td className="px-3 py-3 text-right font-mono font-black text-rose-900 whitespace-nowrap">
                     {formatRupiah(trx.totalAmount)}
                   </td>
-                  <td className="px-4 py-3 text-center">
+                  <td className="px-3 py-3 text-center">
                     <span
                       className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
                         trx.status === 'POSTED'
@@ -325,7 +348,7 @@ export const TransferView: React.FC = () => {
                       {trx.status}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-center whitespace-nowrap">
+                  <td className="px-3 py-3 text-center whitespace-nowrap">
                     <div className="flex items-center justify-center space-x-1.5">
                       <button
                         onClick={() => setDetailTrx(trx)}
@@ -538,21 +561,86 @@ export const TransferView: React.FC = () => {
                 </div>
               </div>
 
-              {/* Amount & Description */}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block font-semibold text-gray-700">Nominal Transfer (Rp) *</label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    placeholder="Contoh: 2000000"
-                    value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-xs font-mono font-bold text-gray-900 focus:border-emerald-600 focus:outline-none"
-                  />
+              {/* Amount, Admin Fee & Total Deduction */}
+              <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50/50 p-3.5">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div>
+                    <label className="block font-semibold text-gray-700">Nominal Transfer (Rp) *</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      placeholder="Contoh: 20000000"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-xs font-mono font-bold text-gray-900 focus:border-emerald-600 focus:outline-none bg-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-gray-700">Biaya Admin Bank (Rp)</label>
+                    <input
+                      type="number"
+                      min="0"
+                      placeholder="Default: 0"
+                      value={adminFee}
+                      onChange={(e) => setAdminFee(e.target.value)}
+                      className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-xs font-mono font-bold text-gray-900 focus:border-emerald-600 focus:outline-none bg-white"
+                    />
+                    <div className="mt-1.5 flex flex-wrap gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setAdminFee('0')}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition ${
+                          adminFee === '0' || adminFee === '' ? 'bg-emerald-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        Rp 0 (Internal)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAdminFee('2500')}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition ${
+                          adminFee === '2500' ? 'bg-emerald-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        + Rp 2.500 (BI-FAST)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setAdminFee('6500')}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition ${
+                          adminFee === '6500' ? 'bg-emerald-700 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        }`}
+                      >
+                        + Rp 6.500 (Online)
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
+                {/* Total Keluar dari Bank/Kas Asal */}
+                <div className="rounded-lg border border-amber-200 bg-amber-50/80 p-2.5">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="text-[11px] font-bold text-amber-900 uppercase">
+                        Total Keluar dari Bank/Kas Asal:
+                      </span>
+                      <p className="text-[10px] text-amber-700">
+                        Nominal Transfer ({formatRupiah(parseFloat(amount) || 0)}) + Biaya Admin ({formatRupiah(parseFloat(adminFee) || 0)})
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="font-mono text-base font-black text-amber-950">
+                        {formatRupiah((parseFloat(amount) || 0) + (parseFloat(adminFee) || 0))}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Reference & Description */}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block font-semibold text-gray-700">No. Bukti Transfer / Referensi</label>
                   <input
@@ -563,17 +651,17 @@ export const TransferView: React.FC = () => {
                     className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-xs focus:border-emerald-600 focus:outline-none"
                   />
                 </div>
-              </div>
 
-              <div>
-                <label className="block font-semibold text-gray-700">Keterangan Transfer</label>
-                <input
-                  type="text"
-                  placeholder="Contoh: Setor tunai ke rekening operasional BSI atau transfer antar rekening"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-xs focus:border-emerald-600 focus:outline-none"
-                />
+                <div>
+                  <label className="block font-semibold text-gray-700">Keterangan Transfer</label>
+                  <input
+                    type="text"
+                    placeholder="Contoh: Transfer operasional BSI ke Muamalat"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-xs focus:border-emerald-600 focus:outline-none"
+                  />
+                </div>
               </div>
 
               {/* Upload Proof */}
@@ -596,19 +684,36 @@ export const TransferView: React.FC = () => {
 
               {/* Journal Preview */}
               <div className="rounded-xl border border-blue-200 bg-blue-50/60 p-3 text-xs">
-                <span className="font-bold text-blue-950">Pratinjau Jurnal Mutasi Aset (Double-Entry Seimbang):</span>
-                <div className="mt-1.5 grid grid-cols-2 gap-2 font-mono text-[11px]">
+                <div className="flex items-center justify-between pb-1.5 border-b border-blue-200/60">
+                  <span className="font-bold text-blue-950">Pratinjau Jurnal Mutasi Aset (Double-Entry Seimbang):</span>
+                  <span className="rounded bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-800">
+                    DEBIT = KREDIT
+                  </span>
+                </div>
+                <div className={`mt-2 grid gap-2 font-mono text-[11px] ${parseFloat(adminFee) > 0 ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2'}`}>
                   <div className="rounded bg-white p-2 border border-blue-100">
-                    <span className="text-gray-500">DEBIT:</span>{' '}
-                    <span className="font-bold text-blue-900">{toType} Tujuan (Bertambah)</span>
-                    <p className="text-blue-700 font-bold">{formatRupiah(amount || 0)}</p>
+                    <span className="text-gray-500">DEBIT (Tujuan):</span>{' '}
+                    <p className="font-bold text-blue-900 truncate">{toType} Tujuan</p>
+                    <p className="text-blue-700 font-bold">{formatRupiah(parseFloat(amount) || 0)}</p>
                   </div>
+                  {parseFloat(adminFee) > 0 && (
+                    <div className="rounded bg-white p-2 border border-blue-100">
+                      <span className="text-gray-500">DEBIT (Beban Admin):</span>{' '}
+                      <p className="font-bold text-amber-900">Beban Admin Bank</p>
+                      <p className="text-amber-700 font-bold">{formatRupiah(parseFloat(adminFee) || 0)}</p>
+                    </div>
+                  )}
                   <div className="rounded bg-white p-2 border border-blue-100">
-                    <span className="text-gray-500">KREDIT:</span>{' '}
-                    <span className="font-bold text-rose-900">{fromType} Asal (Berkurang)</span>
-                    <p className="text-rose-700 font-bold">{formatRupiah(amount || 0)}</p>
+                    <span className="text-gray-500">KREDIT (Asal):</span>{' '}
+                    <p className="font-bold text-rose-900 truncate">{fromType} Asal</p>
+                    <p className="text-rose-700 font-bold">
+                      {formatRupiah((parseFloat(amount) || 0) + (parseFloat(adminFee) || 0))}
+                    </p>
                   </div>
                 </div>
+                <p className="mt-2 text-[10px] text-gray-500 leading-tight">
+                  Transfer antar rekening tidak menambah pendapatan maupun beban. Hanya biaya admin bank ({formatRupiah(parseFloat(adminFee) || 0)}) yang diakui sebagai beban operasional.
+                </p>
               </div>
 
               {/* Actions */}
@@ -654,8 +759,20 @@ export const TransferView: React.FC = () => {
                   <p className="font-semibold text-gray-800">{detailTrx.date}</p>
                 </div>
                 <div>
-                  <span className="text-gray-400">Nominal:</span>
-                  <p className="font-bold text-blue-900">{formatRupiah(detailTrx.totalAmount)}</p>
+                  <span className="text-gray-400">Nominal Transfer:</span>
+                  <p className="font-bold text-blue-900">
+                    {formatRupiah(Number(detailTrx.totalAmount) - (Number(detailTrx.adminFee) || 0))}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-400">Biaya Admin Bank:</span>
+                  <p className="font-bold text-amber-800">
+                    {formatRupiah(Number(detailTrx.adminFee) || 0)}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-400">Total Keluar dari Asal:</span>
+                  <p className="font-bold text-rose-900">{formatRupiah(detailTrx.totalAmount)}</p>
                 </div>
                 <div>
                   <span className="text-gray-400">Asal:</span>

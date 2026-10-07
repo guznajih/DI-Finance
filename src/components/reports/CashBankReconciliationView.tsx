@@ -31,7 +31,7 @@ interface CashBankRecItem {
   systemBalance: string;
   statementBalance: string;
   difference: string;
-  status: 'MATCHED' | 'VARIANCE' | 'NEEDS_REVIEW';
+  status: 'MATCHED' | 'VARIANCE' | 'NEEDS_REVIEW' | 'UNRECONCILED';
   notes?: string;
   attachmentUrl?: string;
   reconciledById: number;
@@ -44,6 +44,7 @@ interface CashBankRecItem {
 export const CashBankReconciliationView: React.FC = () => {
   const { authFetch, user } = useAuth();
   const [reconciliations, setReconciliations] = useState<CashBankRecItem[]>([]);
+  const [unreconciledSummary, setUnreconciledSummary] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [filterType, setFilterType] = useState<string>('');
   const [filterStatus, setFilterStatus] = useState<string>('');
@@ -55,6 +56,7 @@ export const CashBankReconciliationView: React.FC = () => {
   const [formCashId, setFormCashId] = useState<number>(0);
   const [formDate, setFormDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [formStatementBalance, setFormStatementBalance] = useState<string>('');
+  const [formStatus, setFormStatus] = useState<string>('UNRECONCILED');
   const [formNotes, setFormNotes] = useState<string>('');
   const [formAttachmentUrl, setFormAttachmentUrl] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -97,9 +99,17 @@ export const CashBankReconciliationView: React.FC = () => {
       const params = new URLSearchParams();
       if (filterType) params.append('accountType', filterType);
       if (filterStatus) params.append('status', filterStatus);
-      const res = await authFetch(`/api/cash-bank-reconciliations?${params.toString()}`);
+
+      const [res, unrecRes] = await Promise.all([
+        authFetch(`/api/cash-bank-reconciliations?${params.toString()}`),
+        authFetch('/api/cash-bank-reconciliations/unreconciled-summary'),
+      ]);
+
       if (res.ok) {
         setReconciliations(await res.json());
+      }
+      if (unrecRes.ok) {
+        setUnreconciledSummary(await unrecRes.json());
       }
     } catch (e) {
       console.error('Error fetching reconciliations:', e);
@@ -153,6 +163,7 @@ export const CashBankReconciliationView: React.FC = () => {
           cashAccountId: formAccountType === 'KAS' ? formCashId : undefined,
           reconciliationDate: formDate,
           statementBalance: stmtBalNum,
+          status: isMatch ? 'MATCHED' : (formStatus || 'UNRECONCILED'),
           notes: formNotes,
           attachmentUrl: formAttachmentUrl,
         }),
@@ -176,6 +187,25 @@ export const CashBankReconciliationView: React.FC = () => {
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handlePrefillUnreconciled = (item: any) => {
+    setFormAccountType(item.accountType);
+    if (item.accountType === 'BANK') {
+      setFormBankId(item.id);
+    } else {
+      setFormCashId(item.id);
+    }
+    setSelectedSystemBalance(item.glBalance);
+    setFormDate(new Date().toISOString().split('T')[0]);
+    setFormStatementBalance(String(item.statementOrBankBalance));
+    setFormStatus('UNRECONCILED');
+    setFormNotes(
+      `Audit Tahap 9 & 10A: Saldo ${item.name} (Rp ${item.statementOrBankBalance.toLocaleString('id-ID')}) memiliki selisih Rp ${Math.abs(item.difference).toLocaleString('id-ID')} terhadap Buku Besar (Rp ${item.glBalance.toLocaleString('id-ID')}). Status: UNRECONCILED. DILARANG AUTO-FIX; memerlukan konfirmasi fisik rekening koran sebelum pengajuan Jurnal Penyesuaian (AJE) Maker-Checker.`
+    );
+    setFormError('');
+    setFormSuccess('');
+    setShowModal(true);
   };
 
   const handleExportCSV = () => {
@@ -331,6 +361,93 @@ export const CashBankReconciliationView: React.FC = () => {
         </div>
       </div>
 
+      {/* AUDIT UNRECONCILED FINDINGS PANEL (TAHAP 10A) */}
+      {unreconciledSummary.filter((u) => u.isDiscrepancy).length > 0 && (
+        <div className="rounded-2xl border-2 border-amber-300 bg-linear-to-r from-amber-50/90 via-orange-50/70 to-amber-50/90 p-5 shadow-xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-amber-200/80 pb-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-500 text-white shadow-xs">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <div>
+                <h2 className="text-sm font-black text-amber-950 uppercase tracking-wide">
+                  Temuan Audit Akuntansi Tahap 10A — Item Belum Terekonsiliasi (UNRECONCILED)
+                </h2>
+                <p className="text-xs text-amber-800">
+                  Terdeteksi perbedaan antara saldo rekening bank_accounts dan saldo Buku Besar (GL). Sesuai aturan audit, DILARANG melakukan Auto-Fix.
+                </p>
+              </div>
+            </div>
+            <span className="inline-flex items-center rounded-lg bg-amber-600 px-3 py-1 text-xs font-black text-white shadow-xs">
+              STATUS: UNRECONCILED
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 gap-4">
+            {unreconciledSummary
+              .filter((u) => u.isDiscrepancy)
+              .map((item) => (
+                <div
+                  key={item.id}
+                  className="rounded-xl border border-amber-200 bg-white p-4 shadow-xs space-y-3"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">
+                        Rekening Terkena Dampak
+                      </span>
+                      <h3 className="text-base font-black text-gray-900">{item.name}</h3>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <div className="rounded-lg bg-slate-100 px-3 py-1.5 font-mono">
+                        <span className="text-gray-500">Saldo Rekening: </span>
+                        <span className="font-bold text-gray-900">
+                          Rp {item.statementOrBankBalance.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-blue-50 px-3 py-1.5 font-mono">
+                        <span className="text-blue-600">Saldo Buku Besar (GL): </span>
+                        <span className="font-bold text-blue-900">
+                          Rp {item.glBalance.toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                      <div className="rounded-lg bg-rose-50 px-3 py-1.5 font-mono">
+                        <span className="text-rose-600">Selisih: </span>
+                        <span className="font-bold text-rose-800">
+                          Rp {Math.abs(item.difference).toLocaleString('id-ID')}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-amber-50/70 p-3 text-xs text-amber-900 space-y-1.5 border border-amber-200/60">
+                    <p className="font-semibold text-amber-950 flex items-center gap-1.5">
+                      <ShieldCheck className="h-4 w-4 text-amber-700 shrink-0" />
+                      <span>{item.investigationNote}</span>
+                    </p>
+                    <p className="text-[11px] text-amber-800 leading-relaxed">
+                      {item.policyWarning}
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-gray-100">
+                    <div className="text-[11px] text-gray-500">
+                      Verifikasi fisik rekening koran diperlukan sebelum membuat Jurnal Penyesuaian (AJE).
+                    </div>
+                    <button
+                      onClick={() => handlePrefillUnreconciled(item)}
+                      className="flex items-center gap-1.5 rounded-lg bg-amber-700 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-amber-800 transition"
+                    >
+                      <PlusCircle className="h-3.5 w-3.5" />
+                      <span>Buat Berita Acara Rekonsiliasi ({item.accountType})</span>
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+      )}
+
       {/* Filter Bar */}
       <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-xs flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
@@ -356,6 +473,7 @@ export const CashBankReconciliationView: React.FC = () => {
           >
             <option value="">Semua Status</option>
             <option value="MATCHED">MATCHED (Sesuai)</option>
+            <option value="UNRECONCILED">UNRECONCILED (Belum Dicocokkan)</option>
             <option value="VARIANCE">VARIANCE (Selisih)</option>
             <option value="NEEDS_REVIEW">NEEDS_REVIEW</option>
           </select>
@@ -444,6 +562,8 @@ export const CashBankReconciliationView: React.FC = () => {
                           className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                             isMatched
                               ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                              : r.status === 'UNRECONCILED'
+                              ? 'bg-amber-100 text-amber-950 border border-amber-300 shadow-xs'
                               : 'bg-amber-50 text-amber-800 border border-amber-200'
                           }`}
                         >
@@ -627,6 +747,26 @@ export const CashBankReconciliationView: React.FC = () => {
                   required
                 />
               </div>
+
+              {!isMatch && (
+                <div className="space-y-1.5 rounded-xl border border-amber-200 bg-amber-50/70 p-3">
+                  <label className="block text-xs font-bold text-amber-950">
+                    Klasifikasi Status Hasil Rekonsiliasi
+                  </label>
+                  <select
+                    value={formStatus}
+                    onChange={(e) => setFormStatus(e.target.value)}
+                    className="w-full rounded-lg border border-amber-300 bg-white p-2 text-xs font-bold text-amber-950 focus:border-amber-600 focus:outline-hidden"
+                  >
+                    <option value="UNRECONCILED">UNRECONCILED (Item Belum Terekonsiliasi / Butuh Pencocokan)</option>
+                    <option value="VARIANCE">VARIANCE (Terdapat Selisih)</option>
+                    <option value="NEEDS_REVIEW">NEEDS_REVIEW (Perlu Penelaahan Auditor)</option>
+                  </select>
+                  <p className="text-[11px] text-amber-800 leading-snug">
+                    <strong>Peringatan Kebijakan Audit:</strong> Sistem DILARANG melakukan penyesuaian otomatis (auto-fix). Selisih harus dicocokkan dengan mutasi rekening koran fisik dan jika valid, dibukukan via <em>Adjusting Journal Entry (AJE)</em> Maker-Checker.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">

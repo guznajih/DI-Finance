@@ -116,6 +116,7 @@ export interface Transaction {
   reference?: string | null;
   attachmentUrl?: string | null;
   totalAmount: string;
+  adminFee?: string | number | null;
   status: TransactionStatus;
   cashBankType?: 'KAS' | 'BANK' | null;
   cashAccountId?: number | null;

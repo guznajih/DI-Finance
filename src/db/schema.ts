@@ -117,6 +117,7 @@ export const transactions = pgTable('transactions', {
   reference: text('reference'), // bukti kwitansi / invoice
   attachmentUrl: text('attachment_url'), // file attachment / proof
   totalAmount: numeric('total_amount', { precision: 15, scale: 2 }).notNull(),
+  adminFee: numeric('admin_fee', { precision: 15, scale: 2 }).default('0'),
   status: varchar('status', { length: 20 }).default('DRAFT').notNull(), // DRAFT, DIAJUKAN, DISETUJUI, POSTED, REVERSED, VOID
   cashBankType: varchar('cash_bank_type', { length: 20 }), // KAS, BANK
   cashAccountId: integer('cash_account_id').references(() => cashAccounts.id),

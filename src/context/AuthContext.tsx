@@ -121,8 +121,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setSimulatedUserId(null);
       await fetchProfile(idToken);
     } catch (err: any) {
-      console.error('Google login error:', err);
-      alert('Gagal login dengan Google: ' + (err.message || 'Pop-up ditutup atau diblokir'));
+      if (err?.code === 'auth/popup-closed-by-user' || err?.code === 'auth/cancelled-popup-request') {
+        // User closed or cancelled popup, harmless
+        console.info('Google sign-in popup closed by user.');
+      } else {
+        console.error('Google login error:', err);
+      }
       setLoading(false);
     }
   };

@@ -639,6 +639,32 @@ export async function createPengeluaran(input: CreatePengeluaranInput, user: any
   });
 }
 
+// 2.9 Ambil atau Buat Akun COA Beban Administrasi Bank (5430)
+export async function getOrCreateBankAdminExpenseAccount() {
+  return await executeWithRetry(async () => {
+    let [acc] = await db.select().from(accounts).where(eq(accounts.code, '5430')).limit(1);
+    if (!acc) {
+      const [byName] = await db.select().from(accounts).where(eq(accounts.name, 'Beban Administrasi Bank')).limit(1);
+      if (byName) return byName;
+
+      const [created] = await db
+        .insert(accounts)
+        .values({
+          code: '5430',
+          name: 'Beban Administrasi Bank',
+          category: 'BEBAN',
+          subCategory: 'Administrasi Bank',
+          normalBalance: 'DEBIT',
+          description: 'Beban administrasi perbankan, biaya transfer antar bank, dan biaya operasional perbankan',
+          isActive: true,
+        })
+        .returning();
+      acc = created;
+    }
+    return acc;
+  });
+}
+
 // 3. TRANSFER ANTAR KAS & BANK
 export interface CreateTransferInput {
   date: string;
@@ -647,6 +673,7 @@ export interface CreateTransferInput {
   toType: 'KAS' | 'BANK';
   toId: number;
   amount: number;
+  adminFee?: number;
   description: string;
   reference?: string;
   attachmentUrl?: string;
@@ -660,6 +687,9 @@ export async function createTransfer(input: CreateTransferInput, user: any) {
     if (input.fromType === input.toType && input.fromId === input.toId) {
       throw new Error('Akun asal dan akun tujuan transfer tidak boleh sama');
     }
+
+    const adminFee = input.adminFee ? Math.max(0, Number(input.adminFee)) : 0;
+    const totalDeduction = input.amount + adminFee;
 
     let sourceCoaId: number;
     let targetCoaId: number;
@@ -704,11 +734,13 @@ export async function createTransfer(input: CreateTransferInput, user: any) {
 
     const isAutoPost = input.status === 'POSTED' && (user.roleName === 'SUPER_ADMIN' || user.roleName === 'BENDAHARA');
 
-    if (isAutoPost && sourceBal - input.amount < 0 && !input.allowNegativeBalance) {
+    if (isAutoPost && sourceBal - totalDeduction < 0 && !input.allowNegativeBalance) {
       throw new Error(
         `Saldo ${sourceDisplayName} tidak mencukupi untuk transfer! Saldo saat ini Rp ${sourceBal.toLocaleString(
           'id-ID'
-        )}, Transfer Rp ${input.amount.toLocaleString('id-ID')}.`
+        )}, Total dibutuhkan (Transfer Rp ${input.amount.toLocaleString('id-ID')}${
+          adminFee > 0 ? ` + Biaya Admin Rp ${adminFee.toLocaleString('id-ID')}` : ''
+        }) Rp ${totalDeduction.toLocaleString('id-ID')}.`
       );
     }
 
@@ -724,7 +756,8 @@ export async function createTransfer(input: CreateTransferInput, user: any) {
           description: input.description || `Transfer dari ${sourceDisplayName} ke ${targetDisplayName}`,
           reference: input.reference || null,
           attachmentUrl: input.attachmentUrl || null,
-          totalAmount: input.amount.toFixed(2),
+          totalAmount: totalDeduction.toFixed(2),
+          adminFee: adminFee.toFixed(2),
           status: 'DRAFT',
           cashBankType: input.fromType,
           cashAccountId: sourceCashId,
@@ -736,7 +769,7 @@ export async function createTransfer(input: CreateTransferInput, user: any) {
         })
         .returning();
 
-      // Line 1: DEBIT Kas/Bank Tujuan
+      // Line 1: DEBIT Kas/Bank Tujuan (nominal transfer yang masuk)
       await tx.insert(transactionLines).values({
         transactionId: newTrx.id,
         accountId: targetCoaId,
@@ -746,14 +779,31 @@ export async function createTransfer(input: CreateTransferInput, user: any) {
         lineNumber: 1,
       });
 
-      // Line 2: KREDIT Kas/Bank Asal
+      let currentLineNumber = 2;
+
+      // Line 2 (jika ada biaya admin): DEBIT Beban Administrasi Bank
+      if (adminFee > 0) {
+        const adminAcc = await getOrCreateBankAdminExpenseAccount();
+        await tx.insert(transactionLines).values({
+          transactionId: newTrx.id,
+          accountId: adminAcc.id,
+          description: `Beban Administrasi Bank transfer ke ${targetDisplayName}`,
+          debit: adminFee.toFixed(2),
+          credit: '0.00',
+          lineNumber: currentLineNumber++,
+        });
+      }
+
+      // Line terakhir: KREDIT Kas/Bank Asal (Total keluar: transfer + biaya admin)
       await tx.insert(transactionLines).values({
         transactionId: newTrx.id,
         accountId: sourceCoaId,
-        description: `Transfer keluar ke ${targetDisplayName}`,
+        description: adminFee > 0
+          ? `Transfer keluar ke ${targetDisplayName} (termasuk biaya admin bank Rp ${adminFee.toLocaleString('id-ID')})`
+          : `Transfer keluar ke ${targetDisplayName}`,
         debit: '0.00',
-        credit: input.amount.toFixed(2),
-        lineNumber: 2,
+        credit: totalDeduction.toFixed(2),
+        lineNumber: currentLineNumber,
       });
 
       if (isAutoPost) {
@@ -7595,23 +7645,23 @@ export async function getIncomeStatement(
 
         if (l.accountCode === '5110' || subCat.includes('gaji') || subCat.includes('honor')) {
           salaryAndHonor.push(item);
-        } else if (l.accountCode === '5210' || accName.includes('listrik')) {
+        } else if (l.accountCode === '5210' || subCat.includes('dapur') || subCat.includes('konsumsi') || accName.includes('dapur') || accName.includes('makan')) {
+          kitchenConsumption.push(item);
+        } else if (l.accountCode === '5220' || accName.includes('listrik')) {
           electricity.push(item);
-        } else if (l.accountCode === '5220' || accName.includes('air')) {
+        } else if (l.accountCode === '5230' || accName.includes('air') || subCat.includes('air')) {
           water.push(item);
-        } else if (l.accountCode === '5230' || accName.includes('atk') || subCat.includes('atk')) {
+        } else if (l.accountCode === '5410' || accName.includes('atk') || subCat.includes('atk')) {
           stationery.push(item);
-        } else if (l.accountCode === '5240' || accName.includes('pemeliharaan')) {
+        } else if (l.accountCode.startsWith('55') || accName.includes('pemeliharaan') || subCat.includes('sarpras')) {
           maintenance.push(item);
         } else if (l.accountCode === '5920' || accName.includes('kerugian penurunan nilai') || subCat.includes('kerugian investasi')) {
           investmentValuationLoss.push(item);
-        } else if (subCat.includes('pendidikan')) {
+        } else if (l.accountCode === '5310' || subCat.includes('pendidikan') || accName.includes('pendidikan') || accName.includes('kurikulum')) {
           educationExp.push(item);
-        } else if (subCat.includes('santri')) {
+        } else if (l.accountCode === '5320' || l.accountCode === '5330' || subCat.includes('santri') || subCat.includes('kesiswaan') || subCat.includes('kesehatan')) {
           santriActivities.push(item);
-        } else if (subCat.includes('konsumsi') || accName.includes('dapur')) {
-          kitchenConsumption.push(item);
-        } else if (subCat.includes('operasional')) {
+        } else if (subCat.includes('operasional') || subCat.includes('administrasi') || accName.includes('operasional')) {
           operational.push(item);
         } else {
           otherExpenses.push(item);
@@ -7751,8 +7801,8 @@ export async function getCashFlowStatement(
         const cashBankLines = jLines.filter((l) => cashBankAccIds.has(l.accountId));
         const counterpartLines = jLines.filter((l) => !cashBankAccIds.has(l.accountId));
 
-        // Skip internal transfers between cash and bank
-        if (jrn.trxType === 'TRANSFER' || jrn.trxType === 'MUTASI_KAS_BANK' || counterpartLines.length === 0) {
+        // Skip pure internal transfers between cash and bank without external expenses/counterparts
+        if ((jrn.trxType === 'TRANSFER' || jrn.trxType === 'MUTASI_KAS_BANK') && counterpartLines.length === 0) {
           continue;
         }
 
@@ -7829,6 +7879,7 @@ export async function createCashBankReconciliation(
     bankAccountId?: number;
     reconciliationDate: string;
     statementBalance: number;
+    status?: 'MATCHED' | 'VARIANCE' | 'NEEDS_REVIEW' | 'UNRECONCILED';
     notes?: string;
     attachmentUrl?: string;
   },
@@ -7855,7 +7906,7 @@ export async function createCashBankReconciliation(
     }
 
     const difference = input.statementBalance - systemBalance;
-    const status = Math.abs(difference) < 0.01 ? 'MATCHED' : 'VARIANCE';
+    const finalStatus = input.status || (Math.abs(difference) < 0.01 ? 'MATCHED' : 'VARIANCE');
     const recNumber = await generateCashBankRecNumber();
 
     const [rec] = await db
@@ -7869,7 +7920,7 @@ export async function createCashBankReconciliation(
         systemBalance: String(systemBalance),
         statementBalance: String(input.statementBalance),
         difference: String(difference),
-        status,
+        status: finalStatus,
         notes: input.notes || null,
         attachmentUrl: input.attachmentUrl || null,
         reconciledById: user ? user.id : 1,
@@ -7882,7 +7933,7 @@ export async function createCashBankReconciliation(
       'CREATE_CASH_BANK_RECONCILIATION',
       'RECONCILIATION',
       recNumber,
-      `Rekonsiliasi ${input.accountType} (${accLabel}) per ${input.reconciliationDate}. Saldo Sistem: Rp ${systemBalance.toLocaleString('id-ID')}, Saldo Koran: Rp ${input.statementBalance.toLocaleString('id-ID')}, Selisih: Rp ${difference.toLocaleString('id-ID')} (${status}).`
+      `Rekonsiliasi ${input.accountType} (${accLabel}) per ${input.reconciliationDate}. Saldo Sistem: Rp ${systemBalance.toLocaleString('id-ID')}, Saldo Koran: Rp ${input.statementBalance.toLocaleString('id-ID')}, Selisih: Rp ${difference.toLocaleString('id-ID')} (${finalStatus}).`
     );
 
     return rec;
@@ -7940,6 +7991,86 @@ export async function getCashBankReconciliations(filter: {
   });
 }
 
+// 7.1 TELUSURI REKONSILIASI KAS & BANK DAN ITEM UNRECONCILED (TAHAP 10A)
+export async function getUnreconciledCashBankAccounts() {
+  return await executeWithRetry(async () => {
+    const allBanks = await db.select().from(bankAccounts);
+    const allCash = await db.select().from(cashAccounts);
+
+    const items: Array<{
+      id: number;
+      accountType: 'BANK' | 'KAS';
+      name: string;
+      bankName?: string;
+      accountNumber?: string;
+      accountId: number;
+      statementOrBankBalance: number;
+      glBalance: number;
+      difference: number;
+      status: 'MATCHED' | 'UNRECONCILED';
+      isDiscrepancy: boolean;
+      investigationNote: string;
+      policyWarning: string;
+    }> = [];
+
+    for (const b of allBanks) {
+      const gl = await getGeneralLedger(b.accountId);
+      const glEnding = gl.endingBalance;
+      const currentBal = Number(b.currentBalance);
+      const diff = currentBal - glEnding;
+      const isMismatch = Math.abs(diff) > 0.05;
+
+      items.push({
+        id: b.id,
+        accountType: 'BANK',
+        name: `${b.bankName} (${b.accountNumber})`,
+        bankName: b.bankName,
+        accountNumber: b.accountNumber,
+        accountId: b.accountId,
+        statementOrBankBalance: currentBal,
+        glBalance: glEnding,
+        difference: diff,
+        status: isMismatch ? 'UNRECONCILED' : 'MATCHED',
+        isDiscrepancy: isMismatch,
+        investigationNote: isMismatch
+          ? `Terdeteksi selisih Rp ${Math.abs(diff).toLocaleString('id-ID')} pada ${b.bankName}. Audit mengidentifikasi kemungkinan mutasi transaksi historis bank (seperti biaya administrasi bank, potongan pajak bagi hasil, atau jasa giro) yang belum dicatat ke buku jurnal penyesuaian (AJE).`
+          : 'Saldo rekening bank dan Buku Besar (GL) telah cocok 100% seimbang.',
+        policyWarning: isMismatch
+          ? 'ATURAN AUDIT TAHAP 10A: Sistem DILARANG melakukan Auto-Fix terhadap saldo. Item ini berstatus UNRECONCILED sampai Bendahara melakukan verifikasi bukti mutasi fisik rekening koran dan memproses Adjusting Journal Entry (AJE) via Maker-Checker resmi.'
+          : 'Status terverifikasi.',
+      });
+    }
+
+    for (const c of allCash) {
+      const gl = await getGeneralLedger(c.accountId);
+      const glEnding = gl.endingBalance;
+      const currentBal = Number(c.currentBalance);
+      const diff = currentBal - glEnding;
+      const isMismatch = Math.abs(diff) > 0.05;
+
+      items.push({
+        id: c.id,
+        accountType: 'KAS',
+        name: c.name,
+        accountId: c.accountId,
+        statementOrBankBalance: currentBal,
+        glBalance: glEnding,
+        difference: diff,
+        status: isMismatch ? 'UNRECONCILED' : 'MATCHED',
+        isDiscrepancy: isMismatch,
+        investigationNote: isMismatch
+          ? `Terdeteksi selisih fisik kas sebesar Rp ${Math.abs(diff).toLocaleString('id-ID')}. Memerlukan opname fisik kas tunai.`
+          : 'Saldo kas fisik dan Buku Besar (GL) telah cocok 100%.',
+        policyWarning: isMismatch
+          ? 'ATURAN AUDIT: Auto-Fix dilarang. Lakukan rekonsiliasi kas dan berita acara opname kas resmi.'
+          : 'Status terverifikasi.',
+      });
+    }
+
+    return items;
+  });
+}
+
 // 8. PANDUAN BANTU DEBIT / KREDIT UNTUK BENDAHARA
 export function getDebitCreditHelperGuides() {
   return [
@@ -7948,8 +8079,8 @@ export function getDebitCreditHelperGuides() {
       label: 'Pembayaran Tagihan Listrik PLN',
       type: 'PENGELUARAN',
       categoryName: 'Utilitas & Operasional',
-      accountCode: '5210',
-      accountName: 'Beban Listrik',
+      accountCode: '5220',
+      accountName: 'Beban Listrik (PLN)',
       explanation: 'Uang keluar dari Kas/Bank (Kredit) untuk membayar beban listrik pesantren (Debit).',
     },
     {
@@ -7957,9 +8088,18 @@ export function getDebitCreditHelperGuides() {
       label: 'Pembayaran Tagihan Air PDAM',
       type: 'PENGELUARAN',
       categoryName: 'Utilitas & Operasional',
-      accountCode: '5220',
-      accountName: 'Beban Air',
+      accountCode: '5230',
+      accountName: 'Beban Air (PDAM / Sumur)',
       explanation: 'Uang keluar dari Kas/Bank (Kredit) untuk membayar tagihan air pesantren (Debit).',
+    },
+    {
+      id: 'DAPUR_MAKAN',
+      label: 'Belanja Konsumsi & Dapur Santri',
+      type: 'PENGELUARAN',
+      categoryName: 'Operasional Dapur',
+      accountCode: '5210',
+      accountName: 'Beban Makan & Dapur Santri',
+      explanation: 'Uang keluar dari Kas/Bank (Kredit) untuk belanja beras dan bahan makanan dapur santri (Debit).',
     },
     {
       id: 'GAJI_HONOR',
@@ -7975,8 +8115,8 @@ export function getDebitCreditHelperGuides() {
       label: 'Pembelian ATK & Kebutuhan Kantor',
       type: 'PENGELUARAN',
       categoryName: 'Operasional Kantor',
-      accountCode: '5230',
-      accountName: 'Beban ATK & Perlengkapan',
+      accountCode: '5410',
+      accountName: 'Beban ATK & Fotokopi',
       explanation: 'Kas/Bank berkurang (Kredit) untuk pembelian alat tulis dan administrasi (Debit).',
     },
     {
@@ -8368,13 +8508,13 @@ export async function runPhase6AutomatedTests(user: any) {
     const { invAcc, revAcc } = await getOrCreateInvestmentAccounts();
 
     // Accounts for electricity, SPP, etc.
-    let [electricAcc] = await db.select().from(accounts).where(eq(accounts.code, '5210')).limit(1);
+    let [electricAcc] = await db.select().from(accounts).where(eq(accounts.code, '5220')).limit(1);
     if (!electricAcc) {
       const [created] = await db.insert(accounts).values({
-        code: '5210',
-        name: 'Beban Listrik',
+        code: '5220',
+        name: 'Beban Listrik (PLN)',
         category: 'BEBAN',
-        subCategory: 'Beban Operasional & Utilitas',
+        subCategory: 'Utilitas',
         normalBalance: 'DEBIT',
         isActive: true,
       }).returning();
@@ -8450,7 +8590,7 @@ export async function runPhase6AutomatedTests(user: any) {
         id: 'TEST_T6_2',
         title: '2. Pengeluaran Beban Listrik Rp 5.000.000',
         passed: !!expRes,
-        message: 'Lolos: Beban listrik Rp 5.000.000 diposting dengan jurnal DEBIT Beban Listrik (5210) dan KREDIT Bank A.',
+        message: 'Lolos: Beban listrik Rp 5.000.000 diposting dengan jurnal DEBIT Beban Listrik (5220) dan KREDIT Bank A.',
         details: { trxId: expRes?.id, amount: 5000000 },
       });
     } catch (e: any) {
@@ -9178,6 +9318,7 @@ export interface OperationalTransactionInput {
   categoryId?: number;
   categoryName?: string;
   amount: number;
+  adminFee?: number;
   cashBankType?: 'KAS' | 'BANK';
   cashBankId?: number;
   toCashBankType?: 'KAS' | 'BANK';
@@ -9376,6 +9517,9 @@ export async function previewOperationalTransaction(input: OperationalTransactio
         explanation: `${sourceDisplayName || 'Kas/Bank'} berkurang untuk pembayaran (Kredit)`,
       });
     } else if (input.type === 'TRANSFER') {
+      const adminFee = input.adminFee ? Math.max(0, Number(input.adminFee)) : 0;
+      const totalDeduction = input.amount + adminFee;
+
       // Debit: Bank Tujuan
       lines.push({
         accountCode: targetCoa?.code || '1120',
@@ -9385,14 +9529,27 @@ export async function previewOperationalTransaction(input: OperationalTransactio
         credit: 0,
         explanation: `${targetDisplayName || 'Rekening Tujuan'} bertambah (Debit)`,
       });
-      // Kredit: Bank Asal
+
+      // Debit: Beban Administrasi Bank jika ada biaya admin
+      if (adminFee > 0) {
+        lines.push({
+          accountCode: '5430',
+          accountName: 'Beban Administrasi Bank',
+          subCategory: 'Administrasi Bank',
+          debit: adminFee,
+          credit: 0,
+          explanation: `Beban Administrasi Bank bertambah (Debit)`,
+        });
+      }
+
+      // Kredit: Bank Asal (Total keluar)
       lines.push({
         accountCode: sourceCoa?.code || '1110/1120',
         accountName: sourceCoa?.name || sourceDisplayName || 'Rekening Bank Asal',
         subCategory: 'Kas & Setara Kas',
         debit: 0,
-        credit: input.amount,
-        explanation: `${sourceDisplayName || 'Rekening Asal'} berkurang (Kredit)`,
+        credit: totalDeduction,
+        explanation: `${sourceDisplayName || 'Rekening Asal'} berkurang${adminFee > 0 ? ` (termasuk biaya admin Rp ${adminFee.toLocaleString('id-ID')})` : ''} (Kredit)`,
       });
     } else if (input.type === 'INVESTASI') {
       // Debit: Aset Investasi
@@ -9583,7 +9740,8 @@ export async function createOperationalTransaction(input: OperationalTransaction
           recipient: input.recipient || null,
           reference: input.reference || null,
           attachmentUrl: input.attachmentUrl || null,
-          totalAmount: input.amount.toFixed(2),
+          totalAmount: (input.type === 'TRANSFER' && input.adminFee ? input.amount + input.adminFee : input.amount).toFixed(2),
+          adminFee: (input.adminFee ? input.adminFee : 0).toFixed(2),
           status: 'POSTED',
           cashBankType: input.cashBankType || null,
           cashAccountId,

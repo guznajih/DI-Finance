@@ -76,6 +76,7 @@ import {
   getCashFlowStatement,
   createCashBankReconciliation,
   getCashBankReconciliations,
+  getUnreconciledCashBankAccounts,
   getDebitCreditHelperGuides,
   runAccountingIntegrityChecks,
   runPhase6AutomatedTests,
@@ -390,7 +391,7 @@ apiRouter.post('/pengeluaran', requireAuth, async (req: AuthRequest, res: Respon
 
 apiRouter.post('/transfer', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
-    const { date, fromType, fromId, toType, toId, amount, description, reference, attachmentUrl, status, allowNegativeBalance } = req.body;
+    const { date, fromType, fromId, toType, toId, amount, adminFee, description, reference, attachmentUrl, status, allowNegativeBalance } = req.body;
     if (!date || !fromType || !fromId || !toType || !toId || !amount) {
       return res.status(400).json({ error: 'Field transfer kas/bank tidak lengkap' });
     }
@@ -402,6 +403,7 @@ apiRouter.post('/transfer', requireAuth, async (req: AuthRequest, res: Response)
         toType,
         toId: parseInt(toId, 10),
         amount: parseFloat(amount),
+        adminFee: adminFee !== undefined && adminFee !== null && adminFee !== '' ? parseFloat(adminFee) : 0,
         description,
         reference,
         attachmentUrl,
@@ -1760,7 +1762,17 @@ apiRouter.get('/reports/cash-flow', requireAuth, async (req: AuthRequest, res: R
   }
 });
 
-// 18.5. Rekonsiliasi Kas & Bank (List & Create)
+// 18.5. Rekonsiliasi Kas & Bank (List, Unreconciled Summary & Create)
+apiRouter.get('/cash-bank-reconciliations/unreconciled-summary', requireAuth, async (req: AuthRequest, res: Response) => {
+  try {
+    const summary = await getUnreconciledCashBankAccounts();
+    res.json(summary);
+  } catch (error: any) {
+    console.error('Error fetching unreconciled summary:', error);
+    res.status(500).json({ error: error.message || 'Gagal memuat status unreconciled kas dan bank' });
+  }
+});
+
 apiRouter.get('/cash-bank-reconciliations', requireAuth, async (req: AuthRequest, res: Response) => {
   try {
     const { accountType, status, bankAccountId, cashAccountId } = req.query;
@@ -1786,6 +1798,7 @@ apiRouter.post('/cash-bank-reconciliations', requireAuth, async (req: AuthReques
       bankAccountId,
       reconciliationDate,
       statementBalance,
+      status,
       notes,
       attachmentUrl,
     } = req.body;
@@ -1801,6 +1814,7 @@ apiRouter.post('/cash-bank-reconciliations', requireAuth, async (req: AuthReques
         bankAccountId: bankAccountId ? parseInt(bankAccountId, 10) : undefined,
         reconciliationDate,
         statementBalance: parseFloat(statementBalance),
+        status,
         notes,
         attachmentUrl,
       },

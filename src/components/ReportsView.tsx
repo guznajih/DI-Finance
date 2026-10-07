@@ -970,14 +970,15 @@ export const ReportsView: React.FC = () => {
 
                   <div className="space-y-2">
                     {[
-                      { label: 'Gaji & Honor Asatidz / Pegawai', list: incomeStatement.expenses.salaryAndHonor },
-                      { label: 'Beban Listrik PLN', list: incomeStatement.expenses.electricity },
-                      { label: 'Beban Air PDAM / Pengairan', list: incomeStatement.expenses.water },
-                      { label: 'Beban ATK & Perlengkapan', list: incomeStatement.expenses.stationery },
-                      { label: 'Beban Pemeliharaan & Perbaikan', list: incomeStatement.expenses.maintenance },
-                      { label: 'Beban Konsumsi & Dapur Santri', list: incomeStatement.expenses.kitchenConsumption },
-                      { label: 'Beban Kegiatan & Pendidikan Santri', list: incomeStatement.expenses.santriActivities },
-                      { label: 'Beban Operasional Umum Lainnya', list: incomeStatement.expenses.operational },
+                      { label: 'Gaji & Honor Asatidz / Pegawai', list: incomeStatement.expenses.salaryAndHonor || [] },
+                      { label: 'Beban Operasional Dapur & Konsumsi Santri', list: incomeStatement.expenses.kitchenConsumption || [] },
+                      { label: 'Beban Listrik (PLN) & Utilitas', list: incomeStatement.expenses.electricity || [] },
+                      { label: 'Beban Air PDAM / Pengairan', list: incomeStatement.expenses.water || [] },
+                      { label: 'Beban ATK & Perlengkapan', list: incomeStatement.expenses.stationery || [] },
+                      { label: 'Beban Pemeliharaan & Perbaikan', list: incomeStatement.expenses.maintenance || [] },
+                      { label: 'Beban Pendidikan & Kurikulum', list: incomeStatement.expenses.educationExp || [] },
+                      { label: 'Beban Kegiatan & Kesiswaan Santri', list: incomeStatement.expenses.santriActivities || [] },
+                      { label: 'Beban Operasional Umum Lainnya', list: incomeStatement.expenses.operational || [] },
                     ].map((group, idx) => (
                       <div key={idx} className="space-y-1">
                         <div className="text-[11px] font-bold text-gray-500 uppercase">{group.label}</div>
