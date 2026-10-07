@@ -3,24 +3,81 @@ import {
   ArrowDownLeft,
   ArrowLeftRight,
   ArrowUpRight,
+  BadgePercent,
+  BarChart3,
   BookMarked,
   BookOpenCheck,
+  Briefcase,
+  Building2,
+  Calendar,
+  CheckSquare,
+  Clock,
   Coins,
+  Database,
+  FileCheck,
   FileSpreadsheet,
+  FileText,
   FlaskConical,
   FolderTree,
+  GraduationCap,
   History,
+  KeyRound,
   Landmark,
+  Layers,
   LayoutDashboard,
+  Lock,
   Network,
+  PlusCircle,
   Receipt,
+  RotateCcw,
+  Scale,
+  Send,
   ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  TrendingUp,
+  UploadCloud,
   Users,
   Wallet,
 } from 'lucide-react';
 
 export type ViewType =
   | 'dashboard'
+  | 'security-policy'
+  | 'bendahara-dashboard'
+  | 'pimpinan-dashboard'
+  | 'accounting-rules'
+  | 'transaction-corrections'
+  | 'tahap7-health'
+  | 'fase7-testing'
+  // FASE 5: MODUL INVESTASI PESANTREN
+  | 'investment-dashboard'
+  | 'investment-list'
+  | 'investment-placement'
+  | 'investment-profit'
+  | 'investment-return'
+  | 'investment-reconciliation'
+  | 'investment-documents'
+  | 'investment-reports'
+  | 'fase5-testing'
+  // FASE 4: ANGGARAN & PENGAJUAN DANA
+  | 'budget-plan'
+  | 'budget-units'
+  | 'budget-realization'
+  | 'budget-vs-realization'
+  | 'fund-requests'
+  | 'fund-disbursements'
+  | 'lpj-management'
+  | 'monitoring-leadership'
+  | 'fase4-testing'
+  // FASE 3: SPP AGREGAT
+  | 'spp-rekap'
+  | 'spp-input'
+  | 'spp-import'
+  | 'spp-reconciliation'
+  | 'spp-reports'
+  | 'spp-testing'
+  // FASE 2: KEUANGAN UTAMA
   | 'penerimaan'
   | 'pengeluaran'
   | 'transfer'
@@ -29,14 +86,26 @@ export type ViewType =
   | 'bank-book'
   | 'ledger'
   | 'transactions'
+  // MASTER DATA
   | 'units'
   | 'funds'
   | 'accounts'
   | 'cash-bank'
-  | 'reports'
-  | 'audit-logs'
   | 'users'
-  | 'testing';
+  // LAPORAN & AUDIT (FASE 6 & 8)
+  | 'reports'
+  | 'bank-reconciliation'
+  | 'accounting-health'
+  | 'audit-logs'
+  | 'fase6-testing'
+  | 'testing'
+  // TAHAP 8C-8E: AUDIT, PERIOD CONTROL, SECURITY & BACKUP
+  | 'security-dashboard'
+  | 'accounting-periods'
+  | 'integrity-check'
+  | 'security-events'
+  | 'backup-recovery'
+  | 'security-policy';
 
 interface SidebarProps {
   currentView: ViewType;
@@ -55,8 +124,62 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'UTAMA',
       items: [
-        { id: 'dashboard' as ViewType, label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'testing' as ViewType, label: 'Pengujian Akuntansi', icon: FlaskConical },
+        { id: 'bendahara-dashboard' as ViewType, label: 'Dashboard Bendahara', icon: Wallet },
+        { id: 'pimpinan-dashboard' as ViewType, label: 'Dashboard Pimpinan', icon: Landmark },
+        { id: 'dashboard' as ViewType, label: 'Dashboard Ikhtisar', icon: LayoutDashboard },
+        { id: 'monitoring-leadership' as ViewType, label: 'Monitoring Anggaran', icon: BarChart3 },
+      ],
+    },
+    {
+      title: 'AKUNTANSI OPERASIONAL (TAHAP 7)',
+      items: [
+        { id: 'accounting-rules' as ViewType, label: 'Aturan & Kategori Jurnal', icon: FolderTree },
+        { id: 'transaction-corrections' as ViewType, label: 'Koreksi Transaksi (Audit)', icon: RotateCcw },
+        { id: 'tahap7-health' as ViewType, label: 'Accounting Health Check', icon: ShieldCheck },
+        { id: 'fase7-testing' as ViewType, label: 'Uji Otomatis Tahap 7', icon: FlaskConical },
+      ],
+    },
+    {
+      title: 'INVESTASI PESANTREN (FASE 5)',
+      items: [
+        { id: 'investment-dashboard' as ViewType, label: 'Dashboard Investasi', icon: TrendingUp },
+        { id: 'investment-list' as ViewType, label: 'Daftar Investasi', icon: Briefcase },
+        { id: 'investment-placement' as ViewType, label: 'Penempatan Dana', icon: ArrowUpRight },
+        { id: 'investment-profit' as ViewType, label: 'Pendapatan Bagi Hasil', icon: BadgePercent },
+        { id: 'investment-return' as ViewType, label: 'Pengembalian Modal', icon: RotateCcw },
+        { id: 'investment-reconciliation' as ViewType, label: 'Rekonsiliasi Investasi', icon: Scale },
+        { id: 'investment-documents' as ViewType, label: 'Dokumen Investasi', icon: FileText },
+        { id: 'investment-reports' as ViewType, label: 'Laporan Investasi', icon: FileSpreadsheet },
+        { id: 'fase5-testing' as ViewType, label: 'Uji Otomatis FASE 5', icon: FlaskConical },
+      ],
+    },
+    {
+      title: 'ANGGARAN & REALISASI (FASE 4)',
+      items: [
+        { id: 'budget-plan' as ViewType, label: 'Rencana Anggaran', icon: Layers },
+        { id: 'budget-units' as ViewType, label: 'Anggaran Unit/Divisi', icon: Network },
+        { id: 'budget-realization' as ViewType, label: 'Realisasi Anggaran', icon: Receipt },
+        { id: 'budget-vs-realization' as ViewType, label: 'Anggaran vs Realisasi', icon: BarChart3 },
+      ],
+    },
+    {
+      title: 'PENGAJUAN DANA & LPJ (FASE 4)',
+      items: [
+        { id: 'fund-requests' as ViewType, label: 'Pengajuan Dana', icon: Send },
+        { id: 'fund-disbursements' as ViewType, label: 'Pencairan Dana', icon: Wallet },
+        { id: 'lpj-management' as ViewType, label: 'LPJ & Sisa Dana', icon: FileCheck },
+        { id: 'fase4-testing' as ViewType, label: 'Uji Otomatis FASE 4', icon: FlaskConical },
+      ],
+    },
+    {
+      title: 'SPP AGREGAT (FASE 3)',
+      items: [
+        { id: 'spp-rekap' as ViewType, label: 'Rekap Penerimaan', icon: GraduationCap },
+        { id: 'spp-input' as ViewType, label: 'Input Penerimaan', icon: PlusCircle },
+        { id: 'spp-import' as ViewType, label: 'Import Rekap (CSV/Excel)', icon: UploadCloud },
+        { id: 'spp-reconciliation' as ViewType, label: 'Rekonsiliasi Bank', icon: CheckSquare },
+        { id: 'spp-reports' as ViewType, label: 'Laporan SPP', icon: BarChart3 },
+        { id: 'spp-testing' as ViewType, label: 'Uji Otomatis FASE 3', icon: FlaskConical },
       ],
     },
     {
@@ -70,6 +193,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'bank-book' as ViewType, label: 'Buku Bank', icon: Landmark },
         { id: 'ledger' as ViewType, label: 'Buku Besar', icon: BookMarked },
         { id: 'transactions' as ViewType, label: 'Semua Transaksi & Alur', icon: Receipt },
+        { id: 'testing' as ViewType, label: 'Pengujian Akuntansi (FASE 2)', icon: FlaskConical },
       ],
     },
     {
@@ -80,13 +204,28 @@ export const Sidebar: React.FC<SidebarProps> = ({
         { id: 'accounts' as ViewType, label: 'Bagan Akun (COA)', icon: FolderTree },
         { id: 'cash-bank' as ViewType, label: 'Master Kas & Bank', icon: Wallet },
         { id: 'users' as ViewType, label: 'Pengguna & Role', icon: Users },
+        { id: 'security-policy' as ViewType, label: 'Keamanan & Maker-Checker', icon: Lock },
       ],
     },
     {
-      title: 'LAPORAN & AUDIT',
+      title: 'LAPORAN & AUDIT (FASE 6)',
       items: [
         { id: 'reports' as ViewType, label: 'Laporan Keuangan', icon: FileSpreadsheet },
-        { id: 'audit-logs' as ViewType, label: 'Riwayat Audit Trail', icon: History },
+        { id: 'bank-reconciliation' as ViewType, label: 'Rekonsiliasi Kas & Bank', icon: Scale },
+        { id: 'accounting-health' as ViewType, label: 'Diagnostik & Bantuan Bendahara', icon: ShieldCheck },
+        { id: 'fase6-testing' as ViewType, label: 'Uji Otomatis FASE 6', icon: FlaskConical },
+      ],
+    },
+    {
+      title: 'AUDIT, PERIODE & KEAMANAN (TAHAP 8)',
+      items: [
+        { id: 'security-dashboard' as ViewType, label: 'Security & Audit Dashboard', icon: ShieldCheck },
+        { id: 'accounting-periods' as ViewType, label: 'Periode Akuntansi (Tutup Buku)', icon: Calendar },
+        { id: 'integrity-check' as ViewType, label: 'Accounting Integrity Check', icon: Scale },
+        { id: 'audit-logs' as ViewType, label: 'Riwayat Audit Trail (8B)', icon: History },
+        { id: 'security-events' as ViewType, label: 'Log Peristiwa Keamanan', icon: Lock },
+        { id: 'backup-recovery' as ViewType, label: 'Backup & Recovery Data', icon: Database },
+        { id: 'security-policy' as ViewType, label: 'Kebijakan Role & Maker-Checker', icon: KeyRound },
       ],
     },
   ];
@@ -137,11 +276,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                           : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-950'
                       }`}
                     >
-                      <Icon
-                        className={`h-4 w-4 ${
-                          isActive ? 'text-amber-300' : 'text-gray-400'
-                        }`}
-                      />
+                      <Icon className="h-4 w-4 shrink-0" />
                       <span>{item.label}</span>
                     </button>
                   );
@@ -149,23 +284,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               </div>
             </div>
           ))}
-
-          {/* Double-entry Info Banner */}
-          <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-3 text-xs text-emerald-900">
-            <div className="flex items-center space-x-1.5 font-bold text-emerald-950">
-              <ShieldAlert className="h-4 w-4 text-emerald-700 flex-shrink-0" />
-              <span>Double-Entry Validated</span>
-            </div>
-            <p className="mt-1 text-[11px] text-emerald-800 leading-snug">
-              Setiap transaksi otomatis menghasilkan jurnal seimbang. Saldo kas/bank dicegah dari nilai negatif.
-            </p>
-          </div>
-        </div>
-
-        {/* Footer info */}
-        <div className="border-t border-gray-100 p-3 text-xs text-gray-500">
-          <p className="font-semibold text-gray-800">PP Darul Istiqomah</p>
-          <p className="text-[11px] text-gray-400">Bojonegoro, Jawa Timur</p>
         </div>
       </aside>
     </>

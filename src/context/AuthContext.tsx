@@ -46,8 +46,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (currentToken) headers['Authorization'] = `Bearer ${currentToken}`;
       headers['x-dev-user-id'] = String(devUserId || simulatedUserId || 1);
 
-      const res = await fetch('/api/auth/me', { headers });
-      if (res.ok) {
+      const res = await fetch('/api/auth/me', { headers }).catch(() => null);
+      if (res && res.ok) {
         const data = await res.json();
         setUser(data.user);
       } else {
@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     } catch (err) {
-      console.error('Error fetching profile:', err);
+      console.warn('Notice fetching profile (using session fallback):', err);
       // Fallback
       if (!user) {
         setUser({
@@ -130,12 +130,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const loginAsRole = async (role: RoleName) => {
     setLoading(true);
     try {
-      const roleMap: Record<RoleName, { id: number; name: string; email: string; unitName?: string }> = {
+      const roleMap: Record<RoleName, { id: number; name: string; email: string; unitId?: number; unitName?: string }> = {
         SUPER_ADMIN: { id: 1, name: 'Guz Najih (Super Admin)', email: 'guznajih@gmail.com' },
-        PIMPINAN: { id: 2, name: 'K.H. Pimpinan Pondok', email: 'pimpinan@darulistiqomah.ac.id' },
-        BENDAHARA: { id: 3, name: 'Ust. Ahmad Dahlan (Bendahara)', email: 'bendahara@darulistiqomah.ac.id' },
-        PETUGAS_KEUANGAN: { id: 4, name: 'Siti Fatimah (Kasir / Petugas)', email: 'kasir@darulistiqomah.ac.id' },
-        UNIT: { id: 5, name: 'Ust. Ridwan (Divisi Dapur)', email: 'dapur@darulistiqomah.ac.id', unitName: 'Dapur' },
+        BENDAHARA: { id: 2, name: 'Ust. Ahmad Dahlan (Bendahara)', email: 'bendahara@darulistiqomah.ac.id' },
+        VERIFIKATOR: { id: 4, name: 'Ust. Fakhri (Verifikator)', email: 'verifikator@darulistiqomah.ac.id' },
+        APPROVER: { id: 5, name: 'K.H. Syukron (Approver)', email: 'approver@darulistiqomah.ac.id' },
+        PIMPINAN: { id: 6, name: 'K.H. Syukron (Pimpinan Pondok)', email: 'pimpinan@darulistiqomah.ac.id' },
+        PETUGAS_UNIT: { id: 7, name: 'Ust. Ridwan (Petugas Unit Dapur)', email: 'petugas.unit@darulistiqomah.ac.id', unitId: 4, unitName: 'Dapur' },
+        UNIT: { id: 8, name: 'Ust. Ridwan (Divisi Dapur)', email: 'unit@darulistiqomah.ac.id', unitId: 4, unitName: 'Dapur' },
+        AUDITOR: { id: 9, name: 'Drs. H. Mulyadi (Auditor Keuangan)', email: 'auditor@darulistiqomah.ac.id' },
+        VIEWER: { id: 10, name: 'Aisyah Zahra (Viewer Pengawas)', email: 'viewer@darulistiqomah.ac.id' },
+        PETUGAS_KEUANGAN: { id: 2, name: 'Siti Fatimah (Kasir / Petugas)', email: 'kasir@darulistiqomah.ac.id' },
       };
 
       const selected = roleMap[role];
@@ -145,7 +150,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         email: selected.email,
         displayName: selected.name,
         roleId: selected.id,
-        unitId: role === 'UNIT' ? 4 : null,
+        unitId: selected.unitId || null,
         roleName: role,
         roleDesc: `Role ${role}`,
         unitName: selected.unitName || null,
@@ -153,6 +158,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       };
       setUser(simulated);
       setSimulatedUserId(selected.id);
+
+      // Catat audit trail LOGIN
+      fetch('/api/audit-logs/event', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-dev-user-id': String(selected.id),
+        },
+        body: JSON.stringify({
+          action: 'LOGIN',
+          module: 'AUTH',
+          entityType: 'USER_SESSION',
+          entityId: String(selected.id),
+          summary: `Pengguna masuk (Login) sebagai role ${role}: ${selected.name}`,
+          afterValue: { role, userId: selected.id, email: selected.email, loginAt: new Date().toISOString() },
+        }),
+      }).catch(() => {});
     } finally {
       setLoading(false);
     }
@@ -160,6 +182,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = async () => {
     try {
+      if (user) {
+        fetch('/api/audit-logs/event', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-dev-user-id': String(user.id),
+          },
+          body: JSON.stringify({
+            action: 'LOGOUT',
+            module: 'AUTH',
+            entityType: 'USER_SESSION',
+            entityId: String(user.id),
+            summary: `Pengguna keluar (Logout) dari sistem: ${user.displayName || user.email}`,
+            beforeValue: { role: user.roleName, userId: user.id },
+          }),
+        }).catch(() => {});
+      }
+
       await signOut(auth);
       setFirebaseUser(null);
       setToken(null);

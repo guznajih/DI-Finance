@@ -12,11 +12,13 @@ import {
   Receipt,
   RotateCcw,
   Search,
+  Sparkles,
   Trash2,
   X,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.tsx';
 import { Account, Fund, Transaction, TransactionLine, Unit } from '../types/index.ts';
+import { SimpleTransactionModal } from './transactions/SimpleTransactionModal.tsx';
 
 interface TransactionsViewProps {
   modalOpen: boolean;
@@ -34,6 +36,10 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Tahap 7 Simple Modal State
+  const [simpleModalOpen, setSimpleModalOpen] = useState<boolean>(false);
+  const [simpleModalType, setSimpleModalType] = useState<string>('PENERIMAAN');
 
   // Filters
   const [typeFilter, setTypeFilter] = useState<string>('');
@@ -286,17 +292,41 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
     }).format(Number(val) || 0);
   };
 
-  // Filtered transactions
+  // Filtered transactions with plain-language smart understanding
   const filteredTransactions = transactions.filter((t) => {
     if (typeFilter && t.type !== typeFilter) return false;
     if (statusFilter && t.status !== statusFilter) return false;
     if (unitFilter && String(t.unitId) !== unitFilter) return false;
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
-      const matchNum = t.transactionNumber?.toLowerCase().includes(q);
-      const matchDesc = t.description?.toLowerCase().includes(q);
-      const matchUnit = t.unitName?.toLowerCase().includes(q);
-      if (!matchNum && !matchDesc && !matchUnit) return false;
+      // Month keyword matching
+      const monthMap: Record<string, string> = {
+        januari: '-01-', februari: '-02-', maret: '-03-', april: '-04-',
+        mei: '-05-', juni: '-06-', juli: '-07-', agustus: '-08-',
+        september: '-09-', oktober: '-10-', november: '-11-', desember: '-12-'
+      };
+      for (const [mName, mCode] of Object.entries(monthMap)) {
+        if (q.includes(mName) && !t.date?.includes(mCode)) {
+          return false;
+        }
+      }
+
+      // Keyword type matching
+      if (q.includes('pengeluaran') && t.type !== 'PENGELUARAN') return false;
+      if (q.includes('penerimaan') && t.type !== 'PENERIMAAN') return false;
+      if (q.includes('investasi') && !t.type.includes('INVESTASI')) return false;
+
+      // Clean terms match
+      const cleaned = q
+        .replace(/bulan|periode|pengeluaran|penerimaan|transaksi/g, '')
+        .trim();
+
+      if (cleaned.length > 1) {
+        const matchNum = t.transactionNumber?.toLowerCase().includes(cleaned);
+        const matchDesc = t.description?.toLowerCase().includes(cleaned);
+        const matchUnit = t.unitName?.toLowerCase().includes(cleaned);
+        if (!matchNum && !matchDesc && !matchUnit) return false;
+      }
     }
     return true;
   });
@@ -314,16 +344,29 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           </p>
         </div>
 
-        <button
-          onClick={() => {
-            resetForm();
-            setModalOpen(true);
-          }}
-          className="flex items-center space-x-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700 active:scale-95"
-        >
-          <Plus className="h-4 w-4" />
-          <span>Tambah Transaksi Baru</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => {
+              setSimpleModalType('PENERIMAAN');
+              setSimpleModalOpen(true);
+            }}
+            className="flex items-center space-x-1.5 rounded-xl bg-emerald-700 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-600 active:scale-95"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span>Transaksi Sederhana (Bendahara)</span>
+          </button>
+
+          <button
+            onClick={() => {
+              resetForm();
+              setModalOpen(true);
+            }}
+            className="flex items-center space-x-2 rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-bold text-gray-700 shadow-xs transition hover:bg-gray-50 active:scale-95"
+          >
+            <Plus className="h-4 w-4" />
+            <span>Input Manual COA</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar */}
@@ -937,6 +980,17 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Tahap 7 Simple Transaction Modal */}
+      <SimpleTransactionModal
+        isOpen={simpleModalOpen}
+        onClose={() => setSimpleModalOpen(false)}
+        onSuccess={async () => {
+          setSimpleModalOpen(false);
+          await fetchData();
+        }}
+        defaultType={simpleModalType}
+      />
     </div>
   );
 };

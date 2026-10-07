@@ -22,12 +22,14 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) =
   const { user, firebaseUser, loginWithGoogle, loginAsRole, logout } = useAuth();
   const [roleDropdownOpen, setRoleDropdownOpen] = useState(false);
 
-  const roles: { key: RoleName; label: string; desc: string }[] = [
-    { key: 'SUPER_ADMIN', label: 'SUPER ADMIN', desc: 'Akses penuh seluruh modul & setting' },
-    { key: 'BENDAHARA', label: 'BENDAHARA', desc: 'Kelola kas, bank & posting jurnal' },
-    { key: 'PIMPINAN', label: 'PIMPINAN', desc: 'Monitoring laporan, surplus/defisit' },
-    { key: 'PETUGAS_KEUANGAN', label: 'PETUGAS KEUANGAN', desc: 'Pencatatan draft transaksi harian' },
-    { key: 'UNIT', label: 'UNIT / DIVISI', desc: 'Pencatatan pengajuan unit (Dapur)' },
+  const roles: { key: RoleName; label: string; desc: string; badge?: string }[] = [
+    { key: 'SUPER_ADMIN', label: 'SUPER ADMIN', desc: 'Konfigurasi & izin sistem, audit penuh', badge: 'Full Access' },
+    { key: 'BENDAHARA', label: 'BENDAHARA', desc: 'Transaksi operasional, kas/bank, pencairan & jurnal', badge: 'Keuangan' },
+    { key: 'VERIFIKATOR', label: 'VERIFIKATOR', desc: 'Pemeriksa kelengkapan & RAB, bukan approval final', badge: 'Checker' },
+    { key: 'APPROVER', label: 'APPROVER / PIMPINAN', desc: 'Persetujuan pengajuan dana (Maker != Checker)', badge: 'Approver' },
+    { key: 'PETUGAS_UNIT', label: 'PETUGAS UNIT', desc: 'Pengajuan & LPJ unit sendiri (Divisi Dapur)', badge: 'Unit Scope' },
+    { key: 'AUDITOR', label: 'AUDITOR', desc: 'Pemeriksaan laporan & buku besar (Read-Only)', badge: 'Read-Only' },
+    { key: 'VIEWER', label: 'VIEWER', desc: 'Peninjau seluruh modul tanpa izin ubah', badge: 'Read-Only' },
   ];
 
   return (
@@ -105,11 +107,16 @@ export const Navbar: React.FC<NavbarProps> = ({ sidebarOpen, setSidebarOpen }) =
                       }`}
                     >
                       <div>
-                        <div className="font-semibold text-gray-900 flex items-center space-x-1.5">
+                        <div className="font-semibold text-gray-900 flex items-center space-x-1.5 flex-wrap">
                           <span>{r.label}</span>
+                          {r.badge && (
+                            <span className="rounded bg-gray-100 px-1.5 py-0.2 text-[9px] font-semibold text-gray-600">
+                              {r.badge}
+                            </span>
+                          )}
                           {isActive && (
-                            <span className="text-emerald-600 font-normal text-[10px]">
-                              (Aktif)
+                            <span className="text-emerald-600 font-semibold text-[10px]">
+                              ✓ Aktif
                             </span>
                           )}
                         </div>

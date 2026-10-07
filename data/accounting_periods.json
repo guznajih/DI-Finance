@@ -1,0 +1,166 @@
+{
+  "2026-01": {
+    "periodKey": "2026-01",
+    "year": 2026,
+    "month": 1,
+    "monthName": "Januari 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-02": {
+    "periodKey": "2026-02",
+    "year": 2026,
+    "month": 2,
+    "monthName": "Februari 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-03": {
+    "periodKey": "2026-03",
+    "year": 2026,
+    "month": 3,
+    "monthName": "Maret 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-04": {
+    "periodKey": "2026-04",
+    "year": 2026,
+    "month": 4,
+    "monthName": "April 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-05": {
+    "periodKey": "2026-05",
+    "year": 2026,
+    "month": 5,
+    "monthName": "Mei 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-06": {
+    "periodKey": "2026-06",
+    "year": 2026,
+    "month": 6,
+    "monthName": "Juni 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-07": {
+    "periodKey": "2026-07",
+    "year": 2026,
+    "month": 7,
+    "monthName": "Juli 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-08": {
+    "periodKey": "2026-08",
+    "year": 2026,
+    "month": 8,
+    "monthName": "Agustus 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-09": {
+    "periodKey": "2026-09",
+    "year": 2026,
+    "month": 9,
+    "monthName": "September 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-10": {
+    "periodKey": "2026-10",
+    "year": 2026,
+    "month": 10,
+    "monthName": "Oktober 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-11": {
+    "periodKey": "2026-11",
+    "year": 2026,
+    "month": 11,
+    "monthName": "November 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2026-12": {
+    "periodKey": "2026-12",
+    "year": 2026,
+    "month": 12,
+    "monthName": "Desember 2026",
+    "status": "OPEN",
+    "closedBy": null,
+    "closedAt": null,
+    "reopenedBy": null,
+    "reopenedAt": null,
+    "reason": null
+  },
+  "2025-11": {
+    "periodKey": "2025-11",
+    "year": 2025,
+    "month": 11,
+    "monthName": "November 2025",
+    "status": "OPEN",
+    "closedBy": {
+      "id": 2,
+      "name": "Ust. Ahmad Dahlan (Bendahara)",
+      "email": "bendahara@darulistiqomah.ac.id"
+    },
+    "closedAt": "2026-10-06T21:11:50.501Z",
+    "reason": "Pembukaan kembali periode untuk verifikasi koreksi audit tahunan yang telah disetujui",
+    "reopenedBy": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id"
+    },
+    "reopenedAt": "2026-10-06T21:11:50.538Z"
+  }
+}

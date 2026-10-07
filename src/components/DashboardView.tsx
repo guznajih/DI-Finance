@@ -65,19 +65,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   // Fetch Units & Funds for filter dropdowns
   useEffect(() => {
+    let isMounted = true;
     const fetchDropdowns = async () => {
       try {
         const [uRes, fRes] = await Promise.all([
-          authFetch('/api/units'),
-          authFetch('/api/funds'),
+          authFetch('/api/units').catch(() => null),
+          authFetch('/api/funds').catch(() => null),
         ]);
-        if (uRes.ok) setUnits(await uRes.json());
-        if (fRes.ok) setFunds(await fRes.json());
+        if (isMounted) {
+          if (uRes && uRes.ok) {
+            const uData = await uRes.json();
+            setUnits(uData);
+          }
+          if (fRes && fRes.ok) {
+            const fData = await fRes.json();
+            setFunds(fData);
+          }
+        }
       } catch (e) {
-        console.error('Error fetching dropdown filters:', e);
+        console.warn('Notice fetching dropdown filters:', e);
       }
     };
     fetchDropdowns();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const fetchMetrics = async (retry = 0) => {
@@ -505,15 +517,115 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         {/* Right Col: SPP Note & Quick Navigation */}
         <div className="space-y-6">
-          {/* SPP Rule Notice */}
+          {/* FASE 5: Modul Investasi Pesantren Notice & Direct Action */}
+          <div className="rounded-2xl border border-teal-200 bg-gradient-to-br from-teal-50/90 to-emerald-50/70 p-5 text-teal-950 shadow-xs">
+            <div className="flex items-center space-x-2">
+              <TrendingUp className="h-5 w-5 text-teal-800" />
+              <h3 className="font-bold text-sm">Modul Investasi Pesantren (FASE 5)</h3>
+            </div>
+            <p className="mt-2 text-xs text-teal-900 leading-relaxed">
+              Penempatan modal pada mitra/perusahaan luar (Bukan Beban), penerimaan bagi hasil (Pendapatan), dan pengembalian modal (Pengurangan Aset Investasi 1150) yang terintegrasi penuh ke akuntansi double-entry.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                onClick={() => setCurrentView('investment-dashboard')}
+                className="rounded-lg bg-teal-800 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-teal-900 shadow-xs"
+              >
+                Dashboard Investasi
+              </button>
+              <button
+                onClick={() => setCurrentView('investment-placement')}
+                className="rounded-lg bg-emerald-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-800 shadow-xs"
+              >
+                + Penempatan Dana
+              </button>
+              <button
+                onClick={() => setCurrentView('investment-profit')}
+                className="rounded-lg bg-amber-500 px-3 py-1.5 text-[11px] font-bold text-amber-950 hover:bg-amber-400 shadow-xs"
+              >
+                + Catat Bagi Hasil
+              </button>
+              <button
+                onClick={() => setCurrentView('investment-return')}
+                className="rounded-lg bg-blue-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-blue-800 shadow-xs"
+              >
+                Pengembalian Modal
+              </button>
+              <button
+                onClick={() => setCurrentView('fase5-testing')}
+                className="rounded-lg border border-teal-300 bg-white px-3 py-1.5 text-[11px] font-bold text-teal-950 hover:bg-teal-50 shadow-xs"
+              >
+                Uji Otomatis FASE 5
+              </button>
+            </div>
+          </div>
+
+          {/* FASE 4: Anggaran & Pengajuan Dana Notice & Direct Action */}
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50/70 p-5 text-emerald-950">
+            <div className="flex items-center space-x-2">
+              <Landmark className="h-5 w-5 text-emerald-800" />
+              <h3 className="font-bold text-sm">Modul Anggaran & Pengajuan (FASE 4)</h3>
+            </div>
+            <p className="mt-2 text-xs text-emerald-900 leading-relaxed">
+              Kelola rencana anggaran unit, alur pengajuan dana bertingkat, verifikasi bendahara & persetujuan pimpinan, pencairan kas/bank, hingga LPJ dan pengembalian sisa dana secara akuntabel.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                onClick={() => setCurrentView('fund-requests')}
+                className="rounded-lg bg-emerald-800 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-900 shadow-xs"
+              >
+                + Pengajuan Dana
+              </button>
+              <button
+                onClick={() => setCurrentView('budget-plan')}
+                className="rounded-lg bg-teal-800 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-teal-900 shadow-xs"
+              >
+                Rencana Anggaran
+              </button>
+              <button
+                onClick={() => setCurrentView('lpj-management')}
+                className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-bold text-emerald-950 hover:bg-emerald-100"
+              >
+                LPJ & Sisa Dana
+              </button>
+              <button
+                onClick={() => setCurrentView('monitoring-leadership')}
+                className="rounded-lg border border-emerald-300 bg-white px-3 py-1.5 text-[11px] font-bold text-emerald-950 hover:bg-emerald-100"
+              >
+                Monitoring Pimpinan
+              </button>
+            </div>
+          </div>
+
+          {/* SPP Rule Notice & Direct Action */}
           <div className="rounded-2xl border border-amber-200 bg-amber-50/70 p-5 text-amber-950">
             <div className="flex items-center space-x-2">
               <CreditCard className="h-5 w-5 text-amber-700" />
-              <h3 className="font-bold text-sm">Ketentuan Modul SPP Agregat</h3>
+              <h3 className="font-bold text-sm">Modul SPP Agregat (FASE 3)</h3>
             </div>
             <p className="mt-2 text-xs text-amber-900 leading-relaxed">
               Sesuai prinsip akuntansi pondok pesantren, aplikasi tidak mengelola tagihan individu atau data santri. Pembayaran SPP dicatat secara rekapitulasi agregat melalui akun <code>4110 - Pendapatan SPP (Rekap Agregat)</code>.
             </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                onClick={() => setCurrentView('spp-input')}
+                className="rounded-lg bg-emerald-800 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-900 shadow-xs"
+              >
+                + Input SPP Agregat
+              </button>
+              <button
+                onClick={() => setCurrentView('spp-import')}
+                className="rounded-lg bg-teal-700 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-teal-800 shadow-xs"
+              >
+                Import Excel/CSV
+              </button>
+              <button
+                onClick={() => setCurrentView('spp-reconciliation')}
+                className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-[11px] font-bold text-amber-950 hover:bg-amber-100"
+              >
+                Rekonsiliasi Bank
+              </button>
+            </div>
           </div>
 
           {/* Quick Shortcuts */}

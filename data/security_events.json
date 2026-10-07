@@ -1,0 +1,321 @@
+[
+  {
+    "id": "SEC-1791321111014-49",
+    "eventType": "BACKUP",
+    "severity": "INFO",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Backup database lengkap dibuat oleh Super Administrator (994.3 KB, 2180 baris data). File: darulistiqomah_backup_2026-10-06T21-11-50-914Z.json",
+    "metadata": {
+      "snapshotId": "BKP-1791321110914",
+      "sizeBytes": 1018152,
+      "sha256": "d9c98bf2b9a911caf2fb83b8bf2f719af35ba9e36d10b367b01c294dd51d29ef"
+    },
+    "timestamp": "2026-10-06T21:11:51.014Z"
+  },
+  {
+    "id": "SEC-1791321110758-976",
+    "eventType": "PERMISSION_CHANGED",
+    "severity": "WARNING",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Pengujian pencatatan peristiwa keamanan dengan verifikasi penyaringan kredensial sensitif",
+    "metadata": {
+      "targetRole": "BENDAHARA",
+      "testPassword": "[REDACTED]",
+      "testToken": "[REDACTED]",
+      "validSetting": "active"
+    },
+    "timestamp": "2026-10-06T21:11:50.758Z"
+  },
+  {
+    "id": "SEC-1791321110543-72",
+    "eventType": "PERIOD_REOPENED",
+    "severity": "WARNING",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Periode akuntansi November 2025 dibuka kembali oleh Super Administrator. Alasan: Pembukaan kembali periode untuk verifikasi koreksi audit tahunan yang telah disetujui",
+    "metadata": {
+      "periodKey": "2025-11",
+      "reason": "Pembukaan kembali periode untuk verifikasi koreksi audit tahunan yang telah disetujui"
+    },
+    "timestamp": "2026-10-06T21:11:50.543Z"
+  },
+  {
+    "id": "SEC-1791321110516-692",
+    "eventType": "PERIOD_CLOSED",
+    "severity": "WARNING",
+    "user": {
+      "id": 2,
+      "name": "Ust. Ahmad Dahlan (Bendahara)",
+      "email": "bendahara@darulistiqomah.ac.id",
+      "role": "BENDAHARA"
+    },
+    "ipAddress": "",
+    "details": "Periode akuntansi November 2025 ditutup oleh Ust. Ahmad Dahlan (Bendahara). Transaksi baru ke periode ini diblokir. Alasan: Penutupan buku akhir bulan reguler untuk pengujian integritas akuntansi",
+    "metadata": {
+      "periodKey": "2025-11",
+      "reason": "Penutupan buku akhir bulan reguler untuk pengujian integritas akuntansi"
+    },
+    "timestamp": "2026-10-06T21:11:50.516Z"
+  },
+  {
+    "id": "SEC-1791321083960-266",
+    "eventType": "BACKUP",
+    "severity": "INFO",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Backup database lengkap dibuat oleh Super Administrator (985.6 KB, 2166 baris data). File: darulistiqomah_backup_2026-10-06T21-11-23-853Z.json",
+    "metadata": {
+      "snapshotId": "BKP-1791321083853",
+      "sizeBytes": 1009217,
+      "sha256": "0491a34aa72c638a355ba8a46f0d77058d9aadda6eb5891530d619736329ffb6"
+    },
+    "timestamp": "2026-10-06T21:11:23.960Z"
+  },
+  {
+    "id": "SEC-1791321083690-903",
+    "eventType": "PERMISSION_CHANGED",
+    "severity": "WARNING",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Pengujian pencatatan peristiwa keamanan dengan verifikasi penyaringan kredensial sensitif",
+    "metadata": {
+      "targetRole": "BENDAHARA",
+      "testPassword": "[REDACTED]",
+      "testToken": "[REDACTED]",
+      "validSetting": "active"
+    },
+    "timestamp": "2026-10-06T21:11:23.690Z"
+  },
+  {
+    "id": "SEC-1791321083472-584",
+    "eventType": "PERIOD_REOPENED",
+    "severity": "WARNING",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Periode akuntansi November 2025 dibuka kembali oleh Super Administrator. Alasan: Pembukaan kembali periode untuk verifikasi koreksi audit tahunan yang telah disetujui",
+    "metadata": {
+      "periodKey": "2025-11",
+      "reason": "Pembukaan kembali periode untuk verifikasi koreksi audit tahunan yang telah disetujui"
+    },
+    "timestamp": "2026-10-06T21:11:23.472Z"
+  },
+  {
+    "id": "SEC-1791321083445-888",
+    "eventType": "PERIOD_CLOSED",
+    "severity": "WARNING",
+    "user": {
+      "id": 2,
+      "name": "Ust. Ahmad Dahlan (Bendahara)",
+      "email": "bendahara@darulistiqomah.ac.id",
+      "role": "BENDAHARA"
+    },
+    "ipAddress": "",
+    "details": "Periode akuntansi November 2025 ditutup oleh Ust. Ahmad Dahlan (Bendahara). Transaksi baru ke periode ini diblokir. Alasan: Penutupan buku akhir bulan reguler untuk pengujian integritas akuntansi",
+    "metadata": {
+      "periodKey": "2025-11",
+      "reason": "Penutupan buku akhir bulan reguler untuk pengujian integritas akuntansi"
+    },
+    "timestamp": "2026-10-06T21:11:23.445Z"
+  },
+  {
+    "id": "SEC-1791321055160-562",
+    "eventType": "BACKUP",
+    "severity": "INFO",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Backup database lengkap dibuat oleh Super Administrator (976.9 KB, 2152 baris data). File: darulistiqomah_backup_2026-10-06T21-10-54-992Z.json",
+    "metadata": {
+      "snapshotId": "BKP-1791321054992",
+      "sizeBytes": 1000324,
+      "sha256": "484ca253d4ad1c699929f8ac435c1d8340237c0e4024f1c047bf835f47458a96"
+    },
+    "timestamp": "2026-10-06T21:10:55.160Z"
+  },
+  {
+    "id": "SEC-1791321054841-367",
+    "eventType": "PERMISSION_CHANGED",
+    "severity": "WARNING",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Pengujian pencatatan peristiwa keamanan dengan verifikasi penyaringan kredensial sensitif",
+    "metadata": {
+      "targetRole": "BENDAHARA",
+      "testPassword": "[REDACTED]",
+      "testToken": "[REDACTED]",
+      "validSetting": "active"
+    },
+    "timestamp": "2026-10-06T21:10:54.841Z"
+  },
+  {
+    "id": "SEC-1791321054633-463",
+    "eventType": "PERIOD_REOPENED",
+    "severity": "WARNING",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Periode akuntansi November 2025 dibuka kembali oleh Super Administrator. Alasan: Pembukaan kembali periode untuk verifikasi koreksi audit tahunan yang telah disetujui",
+    "metadata": {
+      "periodKey": "2025-11",
+      "reason": "Pembukaan kembali periode untuk verifikasi koreksi audit tahunan yang telah disetujui"
+    },
+    "timestamp": "2026-10-06T21:10:54.633Z"
+  },
+  {
+    "id": "SEC-1791321054609-78",
+    "eventType": "PERIOD_CLOSED",
+    "severity": "WARNING",
+    "user": {
+      "id": 2,
+      "name": "Ust. Ahmad Dahlan (Bendahara)",
+      "email": "bendahara@darulistiqomah.ac.id",
+      "role": "BENDAHARA"
+    },
+    "ipAddress": "",
+    "details": "Periode akuntansi November 2025 ditutup oleh Ust. Ahmad Dahlan (Bendahara). Transaksi baru ke periode ini diblokir. Alasan: Penutupan buku akhir bulan reguler untuk pengujian integritas akuntansi",
+    "metadata": {
+      "periodKey": "2025-11",
+      "reason": "Penutupan buku akhir bulan reguler untuk pengujian integritas akuntansi"
+    },
+    "timestamp": "2026-10-06T21:10:54.609Z"
+  },
+  {
+    "id": "SEC-1791321008012-57",
+    "eventType": "BACKUP",
+    "severity": "INFO",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Backup database lengkap dibuat oleh Super Administrator (968.2 KB, 2138 baris data). File: darulistiqomah_backup_2026-10-06T21-10-07-899Z.json",
+    "metadata": {
+      "snapshotId": "BKP-1791321007899",
+      "sizeBytes": 991391,
+      "sha256": "3b909bce7326914edaf663e54369b40db2010686281836ffdff171ba435eb2be"
+    },
+    "timestamp": "2026-10-06T21:10:08.012Z"
+  },
+  {
+    "id": "SEC-1791321007522-793",
+    "eventType": "PERMISSION_CHANGED",
+    "severity": "WARNING",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Pengujian pencatatan peristiwa keamanan dengan verifikasi penyaringan kredensial sensitif",
+    "metadata": {
+      "targetRole": "BENDAHARA",
+      "testPassword": "[REDACTED]",
+      "testToken": "[REDACTED]",
+      "validSetting": "active"
+    },
+    "timestamp": "2026-10-06T21:10:07.522Z"
+  },
+  {
+    "id": "SEC-1791321007279-885",
+    "eventType": "PERIOD_REOPENED",
+    "severity": "WARNING",
+    "user": {
+      "id": 1,
+      "name": "Super Administrator",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Periode akuntansi November 2025 dibuka kembali oleh Super Administrator. Alasan: Pembukaan kembali periode untuk verifikasi koreksi audit tahunan yang telah disetujui",
+    "metadata": {
+      "periodKey": "2025-11",
+      "reason": "Pembukaan kembali periode untuk verifikasi koreksi audit tahunan yang telah disetujui"
+    },
+    "timestamp": "2026-10-06T21:10:07.279Z"
+  },
+  {
+    "id": "SEC-1791321007253-454",
+    "eventType": "PERIOD_CLOSED",
+    "severity": "WARNING",
+    "user": {
+      "id": 2,
+      "name": "Ust. Ahmad Dahlan (Bendahara)",
+      "email": "bendahara@darulistiqomah.ac.id",
+      "role": "BENDAHARA"
+    },
+    "ipAddress": "",
+    "details": "Periode akuntansi November 2025 ditutup oleh Ust. Ahmad Dahlan (Bendahara). Transaksi baru ke periode ini diblokir. Alasan: Penutupan buku akhir bulan reguler untuk pengujian integritas akuntansi",
+    "metadata": {
+      "periodKey": "2025-11",
+      "reason": "Penutupan buku akhir bulan reguler untuk pengujian integritas akuntansi"
+    },
+    "timestamp": "2026-10-06T21:10:07.253Z"
+  },
+  {
+    "id": "SEC-1791320628611-799",
+    "eventType": "BACKUP",
+    "severity": "INFO",
+    "user": {
+      "id": 1,
+      "name": "Admin",
+      "email": "admin@darulistiqomah.ac.id",
+      "role": "SUPER_ADMIN"
+    },
+    "ipAddress": "",
+    "details": "Backup database lengkap dibuat oleh Admin (958.9 KB, 2124 baris data). File: darulistiqomah_backup_2026-10-06T21-03-48-450Z.json",
+    "metadata": {
+      "snapshotId": "BKP-1791320628450",
+      "sizeBytes": 981869,
+      "sha256": "fa9f5442bee0eea9d53991a5ba30fcb8662cde5ebc3fc68eaf542fd5ba0a9eef"
+    },
+    "timestamp": "2026-10-06T21:03:48.611Z"
+  }
+]
