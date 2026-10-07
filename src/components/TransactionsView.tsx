@@ -350,7 +350,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               setSimpleModalType('PENERIMAAN');
               setSimpleModalOpen(true);
             }}
-            className="flex items-center space-x-1.5 rounded-xl bg-emerald-700 px-3.5 py-2.5 text-xs font-bold text-white shadow-xs transition hover:bg-emerald-600 active:scale-95"
+            className="flex items-center space-x-1.5 rounded-xl bg-teal-700 px-3.5 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-teal-800 active:scale-95"
           >
             <Sparkles className="h-4 w-4" />
             <span>Transaksi Sederhana (Bendahara)</span>
@@ -361,7 +361,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
               resetForm();
               setModalOpen(true);
             }}
-            className="flex items-center space-x-2 rounded-xl border border-gray-300 bg-white px-3.5 py-2.5 text-xs font-bold text-gray-700 shadow-xs transition hover:bg-gray-50 active:scale-95"
+            className="flex items-center space-x-2 rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-xs font-bold text-slate-700 shadow-2xs transition hover:bg-slate-50 active:scale-95"
           >
             <Plus className="h-4 w-4" />
             <span>Input Manual COA</span>
@@ -370,15 +370,15 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-xs">
-        <div className="flex flex-1 items-center space-x-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs">
-          <Search className="h-4 w-4 text-gray-400" />
+      <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs">
+        <div className="flex flex-1 items-center space-x-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-1.5 text-xs">
+          <Search className="h-4 w-4 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="Cari nomor transaksi, uraian, unit..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-transparent focus:outline-none text-gray-800"
+            className="w-full bg-transparent focus:outline-none text-slate-800 placeholder-slate-400"
           />
         </div>
 
@@ -386,7 +386,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 focus:outline-none"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-teal-600 focus:outline-none"
           >
             <option value="">Semua Jenis</option>
             <option value="PENERIMAAN">Penerimaan</option>
@@ -398,7 +398,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 focus:outline-none"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-teal-600 focus:outline-none"
           >
             <option value="">Semua Status</option>
             <option value="POSTED">POSTED (Jurnal Sah)</option>
@@ -409,7 +409,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
           <select
             value={unitFilter}
             onChange={(e) => setUnitFilter(e.target.value)}
-            className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 focus:outline-none"
+            className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-700 focus:border-teal-600 focus:outline-none"
           >
             <option value="">Semua Unit</option>
             {units.map((u) => (
@@ -427,7 +427,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                 setUnitFilter('');
                 setSearchQuery('');
               }}
-              className="text-xs font-semibold text-emerald-800 hover:underline"
+              className="text-xs font-bold text-teal-700 hover:underline"
             >
               Reset Filter
             </button>
@@ -436,10 +436,10 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
       </div>
 
       {/* Transactions Table */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs">
+      <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
-            <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-600">
+            <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
               <tr>
                 <th className="px-4 py-3.5">No. Transaksi</th>
                 <th className="px-4 py-3.5">Tanggal</th>
@@ -451,65 +451,65 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                 <th className="px-4 py-3.5 text-center">Aksi</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody className="divide-y divide-slate-100">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     Memuat data transaksi...
                   </td>
                 </tr>
               ) : filteredTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-gray-400">
+                  <td colSpan={8} className="py-12 text-center text-slate-400">
                     Tidak ada transaksi ditemukan.
                   </td>
                 </tr>
               ) : (
                 filteredTransactions.map((trx) => (
-                  <tr key={trx.id} className="transition hover:bg-gray-50/70">
-                    <td className="px-4 py-3 font-mono font-bold text-gray-800">
+                  <tr key={trx.id} className="transition hover:bg-slate-50/70">
+                    <td className="px-4 py-3 font-mono font-bold text-teal-900">
                       {trx.transactionNumber}
                     </td>
-                    <td className="px-4 py-3 text-gray-600 whitespace-nowrap">{trx.date}</td>
+                    <td className="px-4 py-3 text-slate-600 whitespace-nowrap">{trx.date}</td>
                     <td className="px-4 py-3">
                       <span
-                        className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold ${
+                        className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold border ${
                           trx.type === 'PENERIMAAN'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-teal-50 text-teal-800 border-teal-200'
                             : trx.type === 'PENGELUARAN'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-blue-100 text-blue-800'
+                            ? 'bg-rose-50 text-rose-800 border-rose-200'
+                            : 'bg-slate-100 text-slate-800 border-slate-200'
                         }`}
                       >
                         {trx.type}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-gray-700">
-                      <div className="font-medium">{trx.unitName || '-'}</div>
-                      <div className="text-[10px] text-gray-400">{trx.fundName || 'Umum'}</div>
+                    <td className="px-4 py-3 text-slate-700">
+                      <div className="font-semibold text-slate-900">{trx.unitName || '-'}</div>
+                      <div className="text-[10px] text-slate-400">{trx.fundName || 'Umum'}</div>
                     </td>
-                    <td className="px-4 py-3 text-gray-800 max-w-xs truncate" title={trx.description}>
+                    <td className="px-4 py-3 text-slate-800 max-w-xs truncate" title={trx.description}>
                       {trx.description}
                       {trx.reference && (
-                        <div className="text-[10px] text-gray-400">Ref: {trx.reference}</div>
+                        <div className="text-[10px] text-slate-400">Ref: {trx.reference}</div>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-right font-bold text-gray-900 whitespace-nowrap">
+                    <td className="px-4 py-3 text-right font-mono font-bold text-slate-900 whitespace-nowrap">
                       {formatRupiah(trx.totalAmount)}
                     </td>
                     <td className="px-4 py-3 text-center whitespace-nowrap">
                       <span
-                        className={`inline-flex items-center space-x-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                        className={`inline-flex items-center space-x-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
                           trx.status === 'POSTED'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-teal-50 text-teal-800 border-teal-200'
                             : trx.status === 'REVERSED'
-                            ? 'bg-rose-100 text-rose-800'
-                            : 'bg-amber-100 text-amber-800'
+                            ? 'bg-rose-50 text-rose-800 border-rose-200'
+                            : 'bg-amber-50 text-amber-800 border-amber-200'
                         }`}
                       >
-                        {trx.status === 'POSTED' && <CheckCircle2 className="h-3 w-3 mr-0.5" />}
-                        {trx.status === 'REVERSED' && <RotateCcw className="h-3 w-3 mr-0.5" />}
-                        {trx.status === 'DRAFT' && <Clock className="h-3 w-3 mr-0.5" />}
+                        {trx.status === 'POSTED' && <CheckCircle2 className="h-3 w-3 mr-0.5 text-teal-600" />}
+                        {trx.status === 'REVERSED' && <RotateCcw className="h-3 w-3 mr-0.5 text-rose-600" />}
+                        {trx.status === 'DRAFT' && <Clock className="h-3 w-3 mr-0.5 text-amber-600" />}
                         <span>{trx.status}</span>
                       </span>
                     </td>
@@ -518,7 +518,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                         <button
                           onClick={() => handleViewDetails(trx)}
                           title="Lihat Detail Transaksi & Jurnal"
-                          className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                          className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900 transition"
                         >
                           <Eye className="h-4 w-4" />
                         </button>
@@ -528,7 +528,7 @@ export const TransactionsView: React.FC<TransactionsViewProps> = ({
                           <button
                             onClick={() => handlePostTransaction(trx.id)}
                             title="Posting ke Jurnal Umum"
-                            className="rounded-lg bg-emerald-100 p-1.5 text-emerald-800 hover:bg-emerald-200"
+                            className="rounded-lg bg-teal-50 border border-teal-200 p-1.5 text-teal-800 hover:bg-teal-100 transition"
                           >
                             <FileCheck2 className="h-4 w-4" />
                           </button>

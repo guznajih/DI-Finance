@@ -596,18 +596,18 @@ export const FundRequestsView: React.FC<FundRequestsViewProps> = ({ onOpenLpjMod
                   </td>
                   <td className="p-3.5 text-center">
                     <span
-                      className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                      className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-bold border ${
                         r.status === 'DIAJUKAN'
-                          ? 'bg-amber-100 text-amber-800'
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
                           : r.status === 'DIPERIKSA'
-                          ? 'bg-blue-100 text-blue-800'
+                          ? 'bg-sky-50 text-sky-800 border-sky-200'
                           : r.status === 'DISETUJUI'
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-teal-50 text-teal-800 border-teal-200'
                           : r.status === 'DICAIRKAN'
-                          ? 'bg-teal-100 text-teal-900 border border-teal-300'
+                          ? 'bg-teal-100 text-teal-900 border-teal-300'
                           : r.status === 'SELESAI'
-                          ? 'bg-purple-100 text-purple-800'
-                          : 'bg-rose-100 text-rose-800'
+                          ? 'bg-teal-50 text-teal-800 border-teal-200'
+                          : 'bg-rose-50 text-rose-800 border-rose-200'
                       }`}
                     >
                       {r.status}
@@ -624,20 +624,20 @@ export const FundRequestsView: React.FC<FundRequestsViewProps> = ({ onOpenLpjMod
                   <td className="p-3.5 text-center">
                     {r.status === 'DICAIRKAN' || r.status === 'SELESAI' ? (
                       <span
-                        className={`inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                        className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-bold border ${
                           r.lpjStatus === 'SELESAI'
-                            ? 'bg-emerald-100 text-emerald-800'
+                            ? 'bg-teal-50 text-teal-800 border-teal-200'
                             : r.lpjStatus === 'PERLU_PERBAIKAN'
-                            ? 'bg-rose-100 text-rose-800'
+                            ? 'bg-rose-50 text-rose-800 border-rose-200'
                             : r.lpjStatus === 'DIAJUKAN'
-                            ? 'bg-blue-100 text-blue-800'
-                            : 'bg-amber-100 text-amber-800'
+                            ? 'bg-sky-50 text-sky-800 border-sky-200'
+                            : 'bg-amber-50 text-amber-800 border-amber-200'
                         }`}
                       >
                         {r.lpjStatus || 'BELUM_LPJ'}
                       </span>
                     ) : (
-                      <span className="text-[11px] text-gray-400">-</span>
+                      <span className="text-[11px] text-slate-400">-</span>
                     )}
                   </td>
                   <td className="p-3.5 text-center">

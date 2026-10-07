@@ -289,7 +289,7 @@ export const BudgetView: React.FC = () => {
           {canManage && (
             <button
               onClick={() => setModalOpen(true)}
-              className="flex items-center space-x-1.5 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-emerald-900"
+              className="flex items-center space-x-1.5 rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-teal-800 active:scale-95"
             >
               <Plus className="h-4 w-4" />
               <span>+ Buat Rencana Anggaran</span>
@@ -297,21 +297,21 @@ export const BudgetView: React.FC = () => {
           )}
           <button
             onClick={exportCSV}
-            className="flex items-center space-x-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+            className="flex items-center space-x-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
           >
-            <Download className="h-3.5 w-3.5" />
+            <Download className="h-3.5 w-3.5 text-slate-500" />
             <span>Export CSV</span>
           </button>
           <button
             onClick={() => window.print()}
-            className="flex items-center space-x-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+            className="flex items-center space-x-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-700 hover:bg-slate-50 transition"
           >
-            <Printer className="h-3.5 w-3.5" />
+            <Printer className="h-3.5 w-3.5 text-slate-500" />
             <span>Cetak</span>
           </button>
           <button
             onClick={fetchBudgets}
-            className="rounded-xl border border-gray-200 bg-white p-2 text-gray-600 hover:bg-gray-50"
+            className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:bg-slate-50 transition"
             title="Muat Ulang"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -320,9 +320,9 @@ export const BudgetView: React.FC = () => {
       </div>
 
       {successMsg && (
-        <div className="flex items-center justify-between rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-xs text-emerald-900">
+        <div className="flex items-center justify-between rounded-xl border border-teal-200 bg-teal-50 p-4 text-xs text-teal-900">
           <div className="flex items-center space-x-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-600 flex-shrink-0" />
+            <CheckCircle2 className="h-4 w-4 text-teal-600 shrink-0" />
             <span>{successMsg}</span>
           </div>
           <button onClick={() => setSuccessMsg(null)}>
@@ -333,74 +333,74 @@ export const BudgetView: React.FC = () => {
 
       {error && (
         <div className="flex items-center space-x-2 rounded-xl border border-rose-200 bg-rose-50 p-4 text-xs text-rose-800">
-          <AlertCircle className="h-4 w-4 text-rose-600 flex-shrink-0" />
+          <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
           <span>{error}</span>
         </div>
       )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-xs">
-          <span className="text-xs text-gray-500 font-medium">Total Plafon Anggaran</span>
-          <p className="mt-1 font-mono text-2xl font-bold text-gray-900">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+          <span className="text-xs text-slate-500 font-semibold">Total Plafon Anggaran</span>
+          <p className="mt-2 font-mono text-xl font-bold text-slate-900">
             {formatRupiah(totalAllocated)}
           </p>
-          <span className="text-[11px] text-gray-400">Tahun {fiscalYearFilter || 'Semua'}</span>
+          <span className="text-[11px] text-slate-400">Tahun {fiscalYearFilter || 'Semua'}</span>
         </div>
 
-        <div className="rounded-2xl border border-teal-200 bg-teal-50/50 p-5 shadow-xs">
-          <span className="text-xs text-teal-800 font-medium">Total Realisasi Terpakai</span>
-          <p className="mt-1 font-mono text-2xl font-bold text-teal-900">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+          <span className="text-xs text-slate-500 font-semibold">Total Realisasi Terpakai</span>
+          <p className="mt-2 font-mono text-xl font-bold text-teal-700">
             {formatRupiah(totalRealized)}
           </p>
-          <span className="text-[11px] text-teal-700 font-medium">
-            Diakumulasi dari pencairan dana
+          <span className="text-[11px] text-teal-600 font-medium">
+            Diakumulasi dari pencairan dana kas & bank
           </span>
         </div>
 
-        <div className="rounded-2xl border border-emerald-200 bg-emerald-50/50 p-5 shadow-xs">
-          <span className="text-xs text-emerald-800 font-medium">Sisa Anggaran Tersedia</span>
-          <p className="mt-1 font-mono text-2xl font-bold text-emerald-950">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
+          <span className="text-xs text-slate-500 font-semibold">Sisa Anggaran Tersedia</span>
+          <p className="mt-2 font-mono text-xl font-bold text-slate-900">
             {formatRupiah(totalRemaining)}
           </p>
-          <span className="text-[11px] text-emerald-700 font-medium">
-            Sisa = Anggaran - Realisasi
+          <span className="text-[11px] text-slate-400">
+            Sisa = Plafon Anggaran - Realisasi
           </span>
         </div>
 
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/50 p-5 shadow-xs">
+        <div className="rounded-2xl border border-slate-200/90 bg-white p-5 shadow-xs">
           <div className="flex justify-between items-center">
-            <span className="text-xs text-blue-800 font-medium">Persentase Realisasi</span>
-            <span className="text-xs font-bold text-blue-900">{overallPercentage}%</span>
+            <span className="text-xs text-slate-500 font-semibold">Persentase Realisasi</span>
+            <span className="text-xs font-bold text-teal-800">{overallPercentage}%</span>
           </div>
-          <div className="mt-2 w-full bg-blue-200 h-2.5 rounded-full overflow-hidden">
+          <div className="mt-2.5 w-full bg-slate-100 h-2 rounded-full overflow-hidden border border-slate-200">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
                 overallPercentage > 90
                   ? 'bg-rose-500'
                   : overallPercentage > 75
                   ? 'bg-amber-500'
-                  : 'bg-emerald-600'
+                  : 'bg-teal-600'
               }`}
               style={{ width: `${Math.min(100, overallPercentage)}%` }}
             />
           </div>
-          <span className="mt-1 block text-[10px] text-blue-700 font-medium">
+          <span className="mt-1.5 block text-[10.5px] text-slate-400">
             Target penyerapan anggaran pesantren
           </span>
         </div>
       </div>
 
       {/* Tabs & Filter Bar */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-xs">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 pb-3">
-          <div className="flex items-center space-x-1 bg-gray-100 p-1 rounded-xl">
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 pb-3">
+          <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl">
             <button
               onClick={() => setActiveTab('all')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                 activeTab === 'all'
-                  ? 'bg-white text-emerald-900 shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-teal-700 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Semua Rencana Anggaran
@@ -409,8 +409,8 @@ export const BudgetView: React.FC = () => {
               onClick={() => setActiveTab('by-unit')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                 activeTab === 'by-unit'
-                  ? 'bg-white text-emerald-900 shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-teal-700 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Rekap Anggaran per Unit
@@ -419,22 +419,22 @@ export const BudgetView: React.FC = () => {
               onClick={() => setActiveTab('vs-realization')}
               className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${
                 activeTab === 'vs-realization'
-                  ? 'bg-white text-emerald-900 shadow-xs'
-                  : 'text-gray-600 hover:text-gray-900'
+                  ? 'bg-teal-700 text-white shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
               Anggaran vs Realisasi
             </button>
           </div>
 
-          <div className="flex flex-1 sm:max-w-xs items-center space-x-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs">
-            <Search className="h-4 w-4 text-gray-400 flex-shrink-0" />
+          <div className="flex flex-1 sm:max-w-xs items-center space-x-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-1.5 text-xs">
+            <Search className="h-4 w-4 text-slate-400 shrink-0" />
             <input
               type="text"
               placeholder="Cari kode, unit, atau akun..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-transparent focus:outline-none text-gray-800"
+              className="w-full bg-transparent focus:outline-none text-slate-800 placeholder-slate-400"
             />
           </div>
         </div>

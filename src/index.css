@@ -1,1 +1,69 @@
 @import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Brand Primary (Teal from Logo) */
+    --brand-teal-50: #f0fdfa;
+    --brand-teal-100: #ccfbf1;
+    --brand-teal-200: #99f6e4;
+    --brand-teal-500: #009b9e;
+    --brand-teal-600: #0d8487;
+    --brand-teal-700: #0f6f72;
+    --brand-teal-800: #115e59;
+    --brand-teal-900: #0a3b3d;
+
+    /* Brand Secondary / Accent 1 (Warm Gold/Amber from Logo) */
+    --brand-gold-50: #fffbeb;
+    --brand-gold-100: #fef3c7;
+    --brand-gold-500: #f59e0b;
+    --brand-gold-600: #d97706;
+
+    /* Brand Accent 2 (Magenta / Crimson from Logo) */
+    --brand-magenta-50: #fff1f2;
+    --brand-magenta-100: #ffe4e6;
+    --brand-magenta-500: #e11d48;
+    --brand-magenta-600: #be123c;
+
+    /* Brand Dark Neutral (Midnight Islamic Slate from Logo) */
+    --brand-slate-dark: #0b191e;
+    --brand-slate-surface: #11262d;
+    --brand-slate-border: #1a3842;
+
+    /* Background Tint (Subtle Brand Sage-Slate, Never Pure White) */
+    --brand-bg: #f4f7f6;
+  }
+
+  body {
+    background-color: var(--brand-bg);
+    color: #0f172a;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* Custom Scrollbar for Accounting Grids & Navigation */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Accounting Table Print Optimizations */
+@media print {
+  aside, header, nav, button {
+    display: none !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+}
+

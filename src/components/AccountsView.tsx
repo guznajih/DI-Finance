@@ -162,7 +162,7 @@ export const AccountsView: React.FC = () => {
         {isSuperAdminOrBendahara && (
           <button
             onClick={openCreateModal}
-            className="flex items-center space-x-2 rounded-xl bg-emerald-800 px-4 py-2.5 text-xs font-bold text-white shadow-sm transition hover:bg-emerald-700"
+            className="flex items-center space-x-2 rounded-xl bg-teal-700 px-4 py-2.5 text-xs font-bold text-white shadow-2xs transition hover:bg-teal-800 active:scale-95"
           >
             <Plus className="h-4 w-4" />
             <span>Tambah Akun Baru</span>
@@ -171,7 +171,7 @@ export const AccountsView: React.FC = () => {
       </div>
 
       {/* Category Tabs & Search Bar */}
-      <div className="flex flex-col gap-3 rounded-2xl border border-gray-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 rounded-2xl border border-slate-200/90 bg-white p-4 shadow-xs sm:flex-row sm:items-center sm:justify-between">
         {/* Tabs */}
         <div className="flex flex-wrap gap-1.5">
           {['SEMUA', 'ASET', 'KEWAJIBAN', 'DANA', 'PENDAPATAN', 'BEBAN'].map((cat) => (
@@ -180,8 +180,8 @@ export const AccountsView: React.FC = () => {
               onClick={() => setActiveCategory(cat)}
               className={`rounded-xl px-3 py-1.5 text-xs font-bold transition ${
                 activeCategory === cat
-                  ? 'bg-emerald-800 text-white shadow-xs'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-teal-700 text-white shadow-2xs'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200/80 hover:text-slate-900'
               }`}
             >
               {cat === 'DANA' ? 'DANA / ASET NETO' : cat}
@@ -190,25 +190,25 @@ export const AccountsView: React.FC = () => {
         </div>
 
         {/* Search */}
-        <div className="flex items-center space-x-2 rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs sm:w-64">
-          <Search className="h-4 w-4 text-gray-400" />
+        <div className="flex items-center space-x-2 rounded-xl border border-slate-200 bg-slate-50/80 px-3 py-1.5 text-xs sm:w-72">
+          <Search className="h-4 w-4 text-slate-400 shrink-0" />
           <input
             type="text"
             placeholder="Cari kode atau nama akun..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-transparent focus:outline-none text-gray-800"
+            className="w-full bg-transparent focus:outline-none text-slate-800 placeholder-slate-400"
           />
         </div>
       </div>
 
-      {/* Accounts Table */}
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xs">
+      {/* Accounts Table with Hierarchical Grouping & Indentation */}
+      <div className="overflow-hidden rounded-2xl border border-slate-200/90 bg-white shadow-xs">
         <table className="w-full text-left text-xs">
-          <thead className="border-b border-gray-200 bg-gray-50 text-[11px] font-bold uppercase tracking-wider text-gray-600">
+          <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-600">
             <tr>
               <th className="px-5 py-3.5">Kode Akun</th>
-              <th className="px-5 py-3.5">Nama Akun</th>
+              <th className="px-5 py-3.5">Nama Akun & Klasifikasi</th>
               <th className="px-5 py-3.5">Kelompok</th>
               <th className="px-5 py-3.5">Sub-Kategori</th>
               <th className="px-5 py-3.5 text-center">Saldo Normal</th>
@@ -216,77 +216,123 @@ export const AccountsView: React.FC = () => {
               {isSuperAdminOrBendahara && <th className="px-5 py-3.5 text-center">Aksi</th>}
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-100">
+          <tbody className="divide-y divide-slate-100">
             {loading ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-gray-400">
-                  Memuat data akun...
+                <td colSpan={7} className="py-12 text-center text-slate-400">
+                  Memuat bagan akun pesantren...
                 </td>
               </tr>
             ) : filtered.length === 0 ? (
               <tr>
-                <td colSpan={7} className="py-12 text-center text-gray-400">
-                  Tidak ada akun ditemukan pada kategori ini.
+                <td colSpan={7} className="py-12 text-center text-slate-400">
+                  Tidak ada akun ditemukan pada filter ini.
                 </td>
               </tr>
             ) : (
-              filtered.map((acc) => (
-                <tr key={acc.id} className="hover:bg-gray-50/70">
-                  <td className="px-5 py-3 font-mono font-bold text-emerald-900">{acc.code}</td>
-                  <td className="px-5 py-3 font-semibold text-gray-800">{acc.name}</td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold ${
-                        acc.category === 'ASET'
-                          ? 'bg-blue-100 text-blue-800'
-                          : acc.category === 'KEWAJIBAN'
-                          ? 'bg-rose-100 text-rose-800'
-                          : acc.category === 'DANA'
-                          ? 'bg-purple-100 text-purple-800'
-                          : acc.category === 'PENDAPATAN'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-amber-100 text-amber-800'
-                      }`}
-                    >
-                      {acc.category}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-gray-600">{acc.subCategory}</td>
-                  <td className="px-5 py-3 text-center font-mono font-semibold">
-                    <span
-                      className={`rounded px-1.5 py-0.5 text-[10px] ${
-                        acc.normalBalance === 'DEBIT'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : 'bg-teal-50 text-teal-700'
-                      }`}
-                    >
-                      {acc.normalBalance}
-                    </span>
-                  </td>
-                  <td className="px-5 py-3 text-center">
-                    <span
-                      className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${
-                        acc.isActive
-                          ? 'bg-emerald-100 text-emerald-800'
-                          : 'bg-gray-100 text-gray-600'
-                      }`}
-                    >
-                      {acc.isActive ? 'Aktif' : 'Non-Aktif'}
-                    </span>
-                  </td>
-                  {isSuperAdminOrBendahara && (
-                    <td className="px-5 py-3 text-center">
-                      <button
-                        onClick={() => openEditModal(acc)}
-                        className="rounded-lg p-1.5 text-gray-500 hover:bg-gray-100 hover:text-emerald-800"
-                        title="Edit Akun"
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </button>
-                    </td>
-                  )}
-                </tr>
-              ))
+              (() => {
+                // Group accounts by Category + SubCategory for crystal clear visual presentation
+                let lastGroup = '';
+                return filtered.map((acc) => {
+                  const currentGroup = `${acc.category} — ${acc.subCategory}`;
+                  const isNewGroup = currentGroup !== lastGroup && !searchQuery;
+                  if (isNewGroup) {
+                    lastGroup = currentGroup;
+                  }
+
+                  return (
+                    <React.Fragment key={acc.id}>
+                      {isNewGroup && (
+                        <tr className="bg-slate-50/90 border-t border-slate-200">
+                          <td colSpan={7} className="px-5 py-2">
+                            <div className="flex items-center space-x-2">
+                              <FolderTree className="h-3.5 w-3.5 text-teal-700" />
+                              <span className="font-bold text-[11px] uppercase tracking-wider text-slate-700">
+                                {acc.subCategory}
+                              </span>
+                              <span className="text-[10px] text-slate-400 font-normal">
+                                ({acc.category})
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      <tr className="hover:bg-slate-50/70 transition">
+                        <td className="px-5 py-3 font-mono font-bold text-teal-800">
+                          <span className="inline-block rounded bg-teal-50 px-2 py-0.5 text-xs text-teal-900 border border-teal-100">
+                            {acc.code}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3">
+                          <div className="flex items-center space-x-2">
+                            {/* Visual tree indentation connector */}
+                            <span className="text-slate-300 font-mono select-none">└─</span>
+                            <span className="font-semibold text-slate-800 text-xs">
+                              {acc.name}
+                            </span>
+                          </div>
+                          {acc.description && (
+                            <p className="text-[10.5px] text-slate-400 pl-5 mt-0.5">
+                              {acc.description}
+                            </p>
+                          )}
+                        </td>
+                        <td className="px-5 py-3">
+                          <span
+                            className={`inline-block rounded px-2 py-0.5 text-[10px] font-bold border ${
+                              acc.category === 'ASET'
+                                ? 'bg-teal-50 text-teal-800 border-teal-200'
+                                : acc.category === 'KEWAJIBAN'
+                                ? 'bg-rose-50 text-rose-800 border-rose-200'
+                                : acc.category === 'DANA'
+                                ? 'bg-amber-50 text-amber-800 border-amber-200'
+                                : acc.category === 'PENDAPATAN'
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                                : 'bg-rose-50 text-rose-800 border-rose-200'
+                            }`}
+                          >
+                            {acc.category}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-slate-600 font-medium">{acc.subCategory}</td>
+                        <td className="px-5 py-3 text-center font-mono">
+                          <span
+                            className={`rounded px-2 py-0.5 text-[10px] font-bold border ${
+                              acc.normalBalance === 'DEBIT'
+                                ? 'bg-teal-50 text-teal-700 border-teal-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'
+                            }`}
+                          >
+                            {acc.normalBalance}
+                          </span>
+                        </td>
+                        <td className="px-5 py-3 text-center">
+                          <span
+                            className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold border ${
+                              acc.isActive
+                                ? 'bg-teal-50 text-teal-800 border-teal-200'
+                                : 'bg-slate-100 text-slate-500 border-slate-200'
+                            }`}
+                          >
+                            {acc.isActive ? 'Aktif' : 'Non-Aktif'}
+                          </span>
+                        </td>
+                        {isSuperAdminOrBendahara && (
+                          <td className="px-5 py-3 text-center">
+                            <button
+                              onClick={() => openEditModal(acc)}
+                              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-teal-800 transition"
+                              title="Edit Akun"
+                            >
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                          </td>
+                        )}
+                      </tr>
+                    </React.Fragment>
+                  );
+                });
+              })()
             )}
           </tbody>
         </table>
@@ -311,7 +357,7 @@ export const AccountsView: React.FC = () => {
               )}
 
               <div>
-                <label className="block font-semibold text-gray-700">Kode Akun</label>
+                <label className="block font-semibold text-slate-700">Kode Akun</label>
                 <input
                   type="text"
                   required
@@ -319,29 +365,29 @@ export const AccountsView: React.FC = () => {
                   placeholder="Contoh: 1115, 5215"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-200 p-2 font-mono text-gray-800 focus:border-emerald-600 focus:outline-none disabled:bg-gray-100"
+                  className="mt-1 w-full rounded-lg border border-slate-200 p-2 font-mono text-slate-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-500 disabled:bg-slate-100"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-gray-700">Nama Akun</label>
+                <label className="block font-semibold text-slate-700">Nama Akun</label>
                 <input
                   type="text"
                   required
                   placeholder="Contoh: Kas Dapur Santri, Beban Perawatan Asrama"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-gray-800 focus:border-emerald-600 focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-slate-900 focus:border-teal-600 focus:outline-none focus:ring-1 focus:ring-teal-500"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block font-semibold text-gray-700">Kelompok</label>
+                  <label className="block font-semibold text-slate-700">Kelompok</label>
                   <select
                     value={category}
                     onChange={(e) => handleCategoryChange(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-gray-800 focus:border-emerald-600 focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-slate-900 focus:border-teal-600 focus:outline-none"
                   >
                     <option value="ASET">ASET</option>
                     <option value="KEWAJIBAN">KEWAJIBAN</option>
@@ -352,11 +398,11 @@ export const AccountsView: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-gray-700">Saldo Normal</label>
+                  <label className="block font-semibold text-slate-700">Saldo Normal</label>
                   <select
                     value={normalBalance}
                     onChange={(e) => setNormalBalance(e.target.value)}
-                    className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-gray-800 focus:border-emerald-600 focus:outline-none"
+                    className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-slate-900 focus:border-teal-600 focus:outline-none"
                   >
                     <option value="DEBIT">DEBIT</option>
                     <option value="KREDIT">KREDIT</option>
@@ -365,25 +411,25 @@ export const AccountsView: React.FC = () => {
               </div>
 
               <div>
-                <label className="block font-semibold text-gray-700">Sub-Kategori</label>
+                <label className="block font-semibold text-slate-700">Sub-Kategori</label>
                 <input
                   type="text"
                   required
                   placeholder="Contoh: Kas, Bank, Utilitas, SDM, dll"
                   value={subCategory}
                   onChange={(e) => setSubCategory(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-gray-800 focus:border-emerald-600 focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-slate-900 focus:border-teal-600 focus:outline-none"
                 />
               </div>
 
               <div>
-                <label className="block font-semibold text-gray-700">Keterangan Akun</label>
+                <label className="block font-semibold text-slate-700">Keterangan Akun</label>
                 <textarea
                   rows={2}
                   placeholder="Keterangan peruntukan akun..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-gray-200 p-2 text-gray-800 focus:border-emerald-600 focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-slate-200 p-2 text-slate-900 focus:border-teal-600 focus:outline-none"
                 />
               </div>
 
@@ -393,25 +439,25 @@ export const AccountsView: React.FC = () => {
                   id="accActive"
                   checked={isActive}
                   onChange={(e) => setIsActive(e.target.checked)}
-                  className="h-4 w-4 rounded border-gray-300 text-emerald-800 focus:ring-emerald-700"
+                  className="h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-600"
                 />
-                <label htmlFor="accActive" className="font-medium text-gray-700 cursor-pointer">
+                <label htmlFor="accActive" className="font-medium text-slate-700 cursor-pointer">
                   Akun aktif digunakan dalam transaksi
                 </label>
               </div>
 
-              <div className="mt-5 flex justify-end space-x-2 pt-3 border-t border-gray-100">
+              <div className="mt-5 flex justify-end space-x-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="rounded-xl border border-gray-300 px-4 py-2 font-semibold text-gray-700 hover:bg-gray-50"
+                  className="rounded-xl border border-slate-200 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-50 transition"
                 >
                   Batal
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="rounded-xl bg-emerald-800 px-5 py-2 font-bold text-white shadow-sm hover:bg-emerald-700 disabled:bg-gray-300"
+                  className="rounded-xl bg-teal-700 px-5 py-2 font-bold text-white shadow-2xs hover:bg-teal-800 disabled:bg-slate-300 transition"
                 >
                   {saving ? 'Menyimpan...' : 'Simpan Akun'}
                 </button>

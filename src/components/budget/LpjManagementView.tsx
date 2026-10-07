@@ -394,7 +394,7 @@ export const LpjManagementView: React.FC = () => {
 
           <button
             onClick={() => handleOpenCreateModal()}
-            className="flex items-center space-x-1.5 rounded-xl bg-emerald-800 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-900"
+            className="flex items-center space-x-1.5 rounded-xl bg-teal-700 px-4 py-2 text-xs font-bold text-white shadow-2xs hover:bg-teal-800 transition active:scale-95"
           >
             <Plus className="h-4 w-4" />
             <span>Buat LPJ Baru</span>
@@ -555,12 +555,12 @@ export const LpjManagementView: React.FC = () => {
                   </td>
                   <td className="p-3.5 text-center">
                     <span
-                      className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                      className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-bold border ${
                         lpj.status === 'DISETUJUI' || lpj.status === 'SELESAI'
-                          ? 'bg-emerald-100 text-emerald-800'
+                          ? 'bg-teal-50 text-teal-800 border-teal-200'
                           : lpj.status === 'PERLU_PERBAIKAN'
-                          ? 'bg-rose-100 text-rose-800'
-                          : 'bg-blue-100 text-blue-800'
+                          ? 'bg-rose-50 text-rose-800 border-rose-200'
+                          : 'bg-sky-50 text-sky-800 border-sky-200'
                       }`}
                     >
                       {lpj.status}
@@ -568,12 +568,12 @@ export const LpjManagementView: React.FC = () => {
                   </td>
                   <td className="p-3.5 text-center">
                     <span
-                      className={`inline-block rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                      className={`inline-block rounded-md px-2 py-0.5 text-[10px] font-bold border ${
                         lpj.refundStatus === 'SUDAH_DIKEMBALIKAN'
-                          ? 'bg-teal-100 text-teal-900 border border-teal-300'
+                          ? 'bg-teal-100 text-teal-900 border-teal-300'
                           : lpj.refundStatus === 'MENUNGGU_PENGEMBALIAN'
-                          ? 'bg-amber-100 text-amber-900 animate-pulse'
-                          : 'bg-gray-100 text-gray-700'
+                          ? 'bg-amber-50 text-amber-800 border-amber-200'
+                          : 'bg-slate-100 text-slate-700 border-slate-200'
                       }`}
                     >
                       {lpj.refundStatus === 'SUDAH_DIKEMBALIKAN'

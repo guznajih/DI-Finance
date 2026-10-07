@@ -309,37 +309,37 @@ export const ReportsView: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Header Bar */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-gray-200 pb-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-200 pb-5">
         <div>
           <div className="flex items-center gap-2">
-            <FileSpreadsheet className="h-6 w-6 text-emerald-800" />
-            <h1 className="text-xl font-black text-gray-900 tracking-tight sm:text-2xl">
+            <FileSpreadsheet className="h-6 w-6 text-teal-700" />
+            <h1 className="text-xl font-bold text-slate-900 tracking-tight sm:text-2xl">
               Laporan Keuangan Pesantren
             </h1>
           </div>
-          <p className="text-xs text-gray-500 mt-1">
-            Standar Akuntansi Pesantren Terintegrasi Penuh (Transaksi POSTED → Jurnal → Buku Besar → Laporan)
+          <p className="text-xs text-slate-500 mt-1">
+            Standar Akuntansi Pesantren Terintegrasi Penuh (Transaksi POSTED → Jurnal → Buku Besar → Laporan Keuangan)
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
           <button
             onClick={fetchActiveReport}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 transition"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
           >
-            <RefreshCw className={`h-3.5 w-3.5 text-gray-500 ${loading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-3.5 w-3.5 text-slate-400 ${loading ? 'animate-spin' : ''}`} />
             <span>Segarkan</span>
           </button>
           <button
             onClick={handlePrint}
-            className="flex items-center gap-1.5 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-semibold text-gray-700 shadow-xs hover:bg-gray-50 transition"
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-2xs hover:bg-slate-50 transition"
           >
-            <Printer className="h-3.5 w-3.5 text-gray-500" />
+            <Printer className="h-3.5 w-3.5 text-slate-400" />
             <span>Cetak PDF</span>
           </button>
           <button
             onClick={handleExportCSV}
-            className="flex items-center gap-1.5 rounded-lg bg-emerald-800 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-emerald-900 transition"
+            className="flex items-center gap-1.5 rounded-lg bg-teal-700 px-3.5 py-2 text-xs font-bold text-white shadow-2xs hover:bg-teal-800 transition active:scale-95"
           >
             <Download className="h-3.5 w-3.5" />
             <span>Export CSV</span>
@@ -348,7 +348,7 @@ export const ReportsView: React.FC = () => {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex overflow-x-auto border-b border-gray-200 pb-px gap-1.5 scrollbar-thin">
+      <div className="flex overflow-x-auto border-b border-slate-200 pb-px gap-1.5 scrollbar-thin">
         {[
           { id: 'neraca', label: '1. Neraca Posisi Keuangan', icon: Scale },
           { id: 'laba-rugi', label: '2. Pendapatan & Beban', icon: BarChart3 },
@@ -367,8 +367,8 @@ export const ReportsView: React.FC = () => {
               onClick={() => setActiveTab(tab.id as ReportTab)}
               className={`flex items-center gap-2 whitespace-nowrap rounded-t-lg px-3.5 py-2.5 text-xs font-bold transition border-b-2 ${
                 isActive
-                  ? 'border-emerald-800 bg-emerald-50/50 text-emerald-950'
-                  : 'border-transparent text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  ? 'border-teal-700 bg-teal-50/70 text-teal-950 shadow-2xs'
+                  : 'border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
               <Icon className="h-3.5 w-3.5 shrink-0" />

@@ -39,7 +39,9 @@ import {
   UploadCloud,
   Users,
   Wallet,
+  X,
 } from 'lucide-react';
+import { BrandLogo } from './common/BrandLogo.tsx';
 
 export type ViewType =
   | 'dashboard'
@@ -247,22 +249,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar container */}
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-gray-200 bg-white transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-[#162a33] bg-[#0b191e] text-slate-200 transition-transform duration-200 ease-in-out lg:static lg:translate-x-0 ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-0 -translate-x-full'
         }`}
       >
-        <div className="flex h-16 items-center px-6 border-b border-gray-100 lg:hidden">
-          <span className="text-base font-bold text-emerald-950">Menu Navigasi</span>
+        {/* Mobile Header with BrandLogo and Close Button */}
+        <div className="flex h-16 items-center justify-between px-4 border-b border-[#162a33] bg-[#081317] lg:hidden">
+          <BrandLogo size="sm" variant="full" theme="dark" />
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white transition"
+            title="Tutup Menu"
+            aria-label="Tutup Menu"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
         {/* Navigation list */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5">
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-5">
           {navSections.map((section, idx) => (
             <div key={idx}>
-              <h3 className="px-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">
+              <h3 className="px-3 text-[10.5px] font-bold uppercase tracking-wider text-teal-400/80">
                 {section.title}
               </h3>
-              <div className="mt-1.5 space-y-0.5">
+              <div className="mt-1 space-y-0.5">
                 {section.items.map((item) => {
                   const Icon = item.icon;
                   const isActive = currentView === item.id;
@@ -270,20 +281,33 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     <button
                       key={item.id}
                       onClick={() => handleSelect(item.id)}
-                      className={`flex w-full items-center space-x-3 rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                      className={`flex w-full items-center space-x-2.5 rounded-lg px-3 py-2 text-xs transition text-left ${
                         isActive
-                          ? 'bg-emerald-800 text-white shadow-xs'
-                          : 'text-gray-700 hover:bg-emerald-50 hover:text-emerald-950'
+                          ? 'bg-[#009b9e] text-white shadow-xs font-bold border-l-4 border-amber-400 pl-2'
+                          : 'text-slate-300 hover:bg-white/[0.07] hover:text-white font-medium'
                       }`}
                     >
-                      <Icon className="h-4 w-4 shrink-0" />
-                      <span>{item.label}</span>
+                      <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                      <span className="truncate">{item.label}</span>
                     </button>
                   );
                 })}
               </div>
             </div>
           ))}
+        </div>
+
+        {/* Institutional Tagline Footer */}
+        <div className="p-3.5 border-t border-[#162a33] bg-[#081317] hidden lg:block">
+          <div className="flex items-center space-x-2">
+            <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></div>
+            <p className="text-[10.5px] text-teal-300 font-semibold tracking-wide">
+              Sistem Akuntansi Aktif
+            </p>
+          </div>
+          <p className="text-[9.5px] text-slate-400 mt-0.5">
+            Darul Istiqomah · Woro Bojonegoro
+          </p>
         </div>
       </aside>
     </>

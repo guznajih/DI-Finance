@@ -93,7 +93,7 @@ function MainLayout() {
   };
 
   return (
-    <div className="flex h-screen w-full flex-col bg-slate-50 font-sans text-gray-900 antialiased overflow-hidden">
+    <div className="flex h-screen w-full flex-col bg-[#f4f7f6] font-sans text-slate-900 antialiased overflow-hidden">
       {/* Top Navbar */}
       <Navbar sidebarOpen={sidebarOpen} setSidebarOpen={setSidebarOpen} />
 
